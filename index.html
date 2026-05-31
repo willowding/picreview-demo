@@ -1,0 +1,2187 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>PicReview</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;background:#f0f2f5;color:#222;min-height:100vh}
+header{background:#1a73e8;color:#fff;padding:14px 24px;display:flex;align-items:center;gap:16px;box-shadow:0 2px 6px rgba(0,0,0,.2)}
+header h1{font-size:1.2rem;flex:1;cursor:pointer}
+#roleLabel{background:rgba(255,255,255,.2);border-radius:20px;padding:4px 6px 4px 14px;font-size:.85rem;display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap}
+#logoutBtn{background:#fff;color:#1a73e8;border:none;border-radius:20px;padding:5px 14px;cursor:pointer;font-size:.85rem;font-weight:600}
+main{padding:24px}
+.back-bar{display:flex;align-items:center;gap:12px;margin-bottom:20px}
+.btn-back{background:#fff;border:2px solid #1a73e8;color:#1a73e8;border-radius:20px;padding:6px 18px;cursor:pointer;font-size:.88rem;font-weight:600}
+.btn-back:hover{background:#e8f0fe}
+.btn-import-table{background:#1a73e8;color:#fff;border:none;border-radius:20px;padding:6px 18px;cursor:pointer;font-size:.88rem;font-weight:600}
+.btn-import-table:hover{background:#1558b0}
+.btn-import-table.secondary{background:#fff;color:#666;border:2px solid #ccc;padding:4px 14px;font-weight:500}
+.btn-import-table.secondary:hover{border-color:#dc3545;color:#dc3545}
+.project-title{font-size:1.2rem;font-weight:700}
+.projects-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:20px}
+.projects-header h2{font-size:1.1rem;font-weight:700}
+.btn-new-folder{background:#1a73e8;color:#fff;border:none;border-radius:20px;padding:6px 18px;cursor:pointer;font-size:.88rem;font-weight:600}
+.btn-new-folder:hover{background:#1558b0}
+.projects-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;margin-bottom:32px}
+.folder-card{background:#fff;border-radius:12px;padding:20px 18px;box-shadow:0 2px 8px rgba(0,0,0,.1);cursor:pointer;transition:transform .15s,box-shadow .15s;display:flex;flex-direction:column;gap:8px}
+.folder-card:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(0,0,0,.15)}
+.folder-card .folder-icon{font-size:2rem}
+.folder-card .folder-name{font-weight:700;font-size:1rem;word-break:break-all}
+.folder-card .folder-meta{font-size:.78rem;color:#888}
+.folder-card .folder-stats{display:flex;gap:6px;flex-wrap:wrap}
+.folder-card{position:relative}
+.folder-card.completed{opacity:.55;filter:grayscale(.5)}
+.folder-card.completed:hover{opacity:.75}
+.completed-badge{position:absolute;top:10px;right:10px;background:#2e7d32;color:#fff;font-size:.68rem;font-weight:700;padding:2px 7px;border-radius:20px;letter-spacing:.5px}
+.proj-filter-bar{display:flex;gap:6px;margin-bottom:14px}
+.proj-filter-bar button{padding:4px 14px;border-radius:20px;border:1px solid #c8d3e8;background:#f5f7fb;color:#555;cursor:pointer;font-size:.85rem;transition:background .15s}
+.proj-filter-bar button.active{background:#1a73e8;color:#fff;border-color:#1a73e8}
+.btn-complete{padding:4px 12px;border-radius:6px;border:1px solid #2e7d32;background:#e8f5e9;color:#2e7d32;cursor:pointer;font-size:.82rem;font-weight:600;transition:background .15s}
+.btn-complete:hover{background:#c8e6c9}
+.btn-complete.is-completed{border-color:#b0bec5;background:#f5f5f5;color:#888}
+.projects-search{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:16px}
+.projects-search input{flex:1;min-width:160px;padding:8px 14px;border:1px solid #ccc;border-radius:20px;font-size:.9rem;font-family:inherit}
+.projects-search input:focus{outline:none;border-color:#1a73e8}
+.filter-bar{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap;align-items:center}
+.filter-bar button{padding:6px 18px;border:2px solid #ccc;background:#fff;border-radius:20px;cursor:pointer;font-size:.88rem;transition:all .15s}
+.filter-bar button.active,.filter-bar button:hover{border-color:#1a73e8;color:#1a73e8;background:#e8f0fe}
+#statsBar{margin-left:auto;font-size:.85rem;color:#666}
+#copyToast{position:fixed;top:80px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:10px 24px;border-radius:20px;font-size:.9rem;pointer-events:none;opacity:0;transition:opacity .25s;z-index:999999;box-shadow:0 4px 16px rgba(0,0,0,.2)}
+#uploadArea{border:2px dashed #1a73e8;border-radius:12px;padding:28px;text-align:center;margin-bottom:28px;background:#fff;cursor:pointer;transition:background .15s}
+#uploadArea:hover{background:#e8f0fe}
+#uploadArea p{color:#555;margin-top:8px;font-size:.9rem}
+#fileInput{display:none}
+#uploadProgress{margin-top:10px;height:8px;background:#e0e0e0;border-radius:4px;display:none}
+#uploadProgress .bar{height:100%;background:#1a73e8;border-radius:4px;width:0;transition:width .15s}
+#grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:16px}
+.card-wrap{position:relative}
+.card{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.1);cursor:pointer;transition:transform .15s,box-shadow .15s}
+.card:hover{transform:translateY(-3px);box-shadow:0 6px 16px rgba(0,0,0,.15)}
+.card-wrap.select-mode .card{outline:2px solid transparent}
+.card-wrap.selected .card{outline:3px solid #1a73e8}
+.card-sel{display:none;position:absolute;top:8px;right:8px;z-index:8}
+.card-wrap.select-mode .card-sel{display:block}
+.card-sel input{width:18px;height:18px;cursor:pointer}
+.claim-pin{position:absolute;top:8px;left:8px;z-index:7;color:#fff;padding:4px 10px;border-radius:10px;font-size:.72rem;font-weight:800;max-width:calc(100% - 48px);text-align:left;box-shadow:0 2px 6px rgba(0,0,0,.25)}
+.claim-pin em,.modal-claim-pin em{font-style:italic;font-weight:800}
+.card img{width:100%;aspect-ratio:1;object-fit:cover;display:block}
+.batch-bar{display:none;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;padding:12px 14px;background:#fff;border-radius:12px;border:1px solid #dee2e6}
+.batch-bar.visible{display:flex}
+.batch-bar label{display:flex;align-items:center;gap:6px;font-size:.88rem;cursor:pointer}
+.batch-bar button{padding:6px 16px;border-radius:20px;border:none;cursor:pointer;font-size:.85rem;font-weight:600;background:#e9ecef}
+.batch-bar button.primary{background:#1a73e8;color:#fff}
+.batch-bar button.danger{background:#dc3545;color:#fff}
+#batchCount{margin-left:auto;font-size:.85rem;color:#555}
+.modal-claim-pin{position:absolute;top:10px;left:10px;z-index:15;color:#fff;padding:5px 12px;border-radius:10px;font-size:.8rem;font-weight:800;display:none;max-width:85%;box-shadow:0 2px 8px rgba(0,0,0,.35)}
+.modal-claim-pin.show{display:block}
+.btn-claim{padding:8px 18px;background:#ff9800;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.88rem;font-weight:700}
+.btn-claim:hover{background:#f57c00}
+.btn-claim-secondary{padding:8px 14px;background:#fff;color:#666;border:1px solid #ccc;border-radius:8px;cursor:pointer;font-size:.85rem}
+.card .info{padding:10px 12px}
+.card .filename{font-size:.78rem;color:#555;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{display:inline-block;border-radius:12px;padding:2px 10px;font-size:.73rem;font-weight:700;margin-bottom:4px}
+.badge-pending{background:#fff3cd;color:#856404}
+.badge-approved{background:#d1e7dd;color:#0f5132}
+.badge-rejected{background:#f8d7da;color:#842029}
+.badge-claimed{background:#fff3e0;color:#e65100}
+.card .reject-reason{font-size:.73rem;color:#842029;margin-top:4px;word-break:break-all}
+#modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center;padding:20px}
+#modal.open{display:flex}
+.modal-box{background:#fff;border-radius:16px;max-width:920px;width:100%;max-height:96vh;overflow-y:auto;display:flex;flex-direction:column}
+.modal-img-wrap{
+  background:#111;border-radius:16px 16px 0 0;overflow:auto;display:flex;align-items:center;justify-content:center;position:relative;
+  flex-shrink:0;min-height:0;padding:8px;box-sizing:border-box;
+  max-height:min(82vh,calc(100dvh - 200px));
+}
+.modal-img-wrap img{
+  max-width:100%;width:auto;height:auto;object-fit:contain;display:block;
+  max-height:min(82vh,calc(100dvh - 200px));
+}
+.nav-btn{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.85);border:none;border-radius:50%;width:40px;height:40px;font-size:1.2rem;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.nav-btn:hover{background:#fff}
+.nav-btn:disabled{opacity:.2;cursor:default}
+#btnPrev{left:10px}#btnNext{right:10px}
+#navCounter{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);background:rgba(0,0,0,.5);color:#fff;border-radius:12px;padding:2px 12px;font-size:.8rem}
+#reviewToast{position:fixed;top:38%;left:50%;transform:translate(-50%,-50%);padding:14px 36px;border-radius:12px;font-size:1.2rem;font-weight:800;color:#fff;pointer-events:none;opacity:0;transition:opacity .3s;z-index:100001;box-shadow:0 4px 24px rgba(0,0,0,.4);letter-spacing:.05em}
+#reviewToast.show{opacity:1}
+#reviewToast.approved{background:rgba(25,135,84,.93)}
+#reviewToast.rejected{background:rgba(220,53,69,.93)}
+.modal-body{padding:18px 22px 22px}
+.modal-body h3{margin-bottom:6px;font-size:1rem;word-break:break-all}
+.tags{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.tag{padding:4px 12px;border:2px solid #ccc;border-radius:20px;cursor:pointer;font-size:.82rem;transition:all .15s;background:#fff}
+.tag.selected{border-color:#1a73e8;background:#e8f0fe;color:#1a73e8;font-weight:700}
+.modal-body textarea{width:100%;border:1px solid #ccc;border-radius:8px;padding:10px;font-size:.88rem;resize:vertical;min-height:60px;font-family:inherit;margin-bottom:14px}
+.modal-body textarea:focus{outline:none;border-color:#1a73e8}
+.comments-list{margin-bottom:14px;max-height:140px;overflow-y:auto}
+.comment-item{background:#f8f9fa;border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:.83rem}
+.comment-item .meta{color:#888;font-size:.73rem;margin-bottom:3px}
+.modal-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn-approve{padding:8px 22px;background:#198754;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.92rem;font-weight:700}
+.btn-approve:hover{background:#157347}
+.btn-reject{padding:8px 22px;background:#dc3545;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:.92rem;font-weight:700}
+.btn-reject:hover{background:#bb2d3b}
+.btn-close{padding:8px 18px;background:#e9ecef;color:#333;border:none;border-radius:8px;cursor:pointer;font-size:.92rem}
+.btn-close:hover{background:#dee2e6}
+.btn-delete{padding:8px 18px;background:#fff;color:#dc3545;border:2px solid #dc3545;border-radius:8px;cursor:pointer;font-size:.92rem;margin-right:auto}
+.btn-delete:hover{background:#f8d7da}
+.replaceBtn{width:100%;margin-top:8px;padding:7px;background:#dc3545;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:.82rem;font-weight:600}
+.btn-rename{background:none;border:none;cursor:pointer;color:#aaa;font-size:.85rem;padding:0 4px;vertical-align:middle;line-height:1}
+.btn-rename:hover{color:#1a73e8}
+#importModal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:200;align-items:center;justify-content:center}
+#importModal.open{display:flex}
+.import-box{background:#fff;border-radius:16px;padding:28px 30px;width:520px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,.25)}
+.import-box h2{font-size:1.05rem;margin:0 0 18px;color:#1a1a1a}
+.import-section{margin-bottom:18px}
+.import-section label{display:block;font-size:.82rem;font-weight:700;color:#555;margin-bottom:6px}
+.import-section select{width:100%;padding:7px 10px;border:1px solid #ccc;border-radius:8px;font-size:.88rem;background:#fff}
+.import-col-list{display:grid;grid-template-columns:1fr 1fr;gap:6px;max-height:160px;overflow-y:auto;padding:4px 0}
+.import-col-item{display:flex;align-items:center;gap:6px;font-size:.82rem;padding:4px 8px;border-radius:6px;background:#f8f9fa}
+.import-col-item input{flex-shrink:0}
+.import-col-item.empty-col{opacity:.4}
+.import-preview{background:#f8f9fa;border-radius:8px;padding:10px 12px;font-size:.78rem;color:#555;margin-bottom:18px;max-height:80px;overflow:hidden;line-height:1.7}
+.import-actions{display:flex;gap:10px;justify-content:flex-end}
+.import-actions button{padding:8px 22px;border-radius:8px;border:none;cursor:pointer;font-size:.88rem;font-weight:700}
+.btn-import-confirm{background:#1a73e8;color:#fff}
+.btn-import-confirm:hover{background:#1558b0}
+.btn-import-cancel{background:#e9ecef;color:#333}
+.btn-import-cancel:hover{background:#dee2e6}
+.toast{background:#323232;color:#fff;border-radius:12px;padding:13px 18px;font-size:.88rem;box-shadow:0 4px 20px rgba(0,0,0,.35);pointer-events:all;display:flex;align-items:flex-start;gap:10px;max-width:320px;line-height:1.5;animation:toastIn .25s ease}
+@keyframes toastIn{from{transform:translateX(110%);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast-close{background:none;border:none;color:#fff;cursor:pointer;font-size:1.1rem;padding:0;opacity:.6;flex-shrink:0;margin-left:auto}
+.toast-close:hover{opacity:1}
+#emptyHint{text-align:center;color:#aaa;margin-top:60px;font-size:1rem}
+.view-btn{padding:6px 18px;border:2px solid #ccc;background:#fff;border-radius:20px;cursor:pointer;font-size:.88rem;transition:all .15s;font-family:inherit}
+.view-btn.active,.view-btn:hover{border-color:#1a73e8;color:#1a73e8;background:#e8f0fe}
+#tableView{background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.1);margin-bottom:20px;display:none}
+#statusTable{width:100%;border-collapse:collapse;font-size:.85rem}
+#statusTable th{background:#f0f2f5;padding:10px 14px;text-align:left;font-weight:700;border-bottom:2px solid #dee2e6;white-space:nowrap}
+#statusTable td{padding:7px 14px;border-bottom:1px solid #f5f5f5;vertical-align:middle}
+#statusTable tr:hover td{background:#f8f9fa;cursor:pointer}
+.st-badge{border-radius:10px;padding:2px 10px;font-size:.76rem;font-weight:700;white-space:nowrap}
+.book-header td{background:#1a73e8;color:#fff;font-weight:700;padding:8px 16px;font-size:.88rem}
+#loginMask{position:fixed;inset:0;background:linear-gradient(135deg,#1a73e8 0%,#0d47a1 100%);display:flex;align-items:center;justify-content:center;z-index:200}
+.login-box{background:#fff;border-radius:16px;padding:40px 36px;width:360px;text-align:center;box-shadow:0 8px 32px rgba(0,0,0,.25)}
+.login-box h2{margin-bottom:6px;font-size:1.4rem;color:#1a73e8}
+.login-box .sub{color:#666;margin-bottom:22px;font-size:.9rem}
+.login-box input{width:100%;border:1px solid #ccc;border-radius:8px;padding:10px 14px;font-size:1rem;margin-bottom:18px;font-family:inherit}
+.login-box input:focus{outline:none;border-color:#1a73e8}
+.role-pick{display:flex;gap:12px;margin-bottom:22px}
+.role-card{flex:1;border:2px solid #e0e0e0;border-radius:14px;padding:18px 10px 14px;cursor:pointer;transition:all .2s;text-align:center;position:relative;background:#fafafa}
+#cardUploader{border-color:#b3d4fb}
+#cardUploader:hover{border-color:#1a73e8;background:#eef5ff;box-shadow:0 4px 16px rgba(26,115,232,.15);transform:translateY(-2px)}
+#cardUploader.selected{border-color:#1a73e8;background:#e8f0fe;box-shadow:0 4px 16px rgba(26,115,232,.22);transform:translateY(-2px)}
+#cardReviewer{border-color:#a3d9b8}
+#cardReviewer:hover{border-color:#198754;background:#edf7f2;box-shadow:0 4px 16px rgba(25,135,84,.15);transform:translateY(-2px)}
+#cardReviewer.selected{border-color:#198754;background:#d7f0e3;box-shadow:0 4px 16px rgba(25,135,84,.22);transform:translateY(-2px)}
+.role-icon-wrap{width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:1.5rem;transition:transform .2s}
+#cardUploader .role-icon-wrap{background:#dbeafe}
+#cardReviewer .role-icon-wrap{background:#d1fae5}
+.role-card:hover .role-icon-wrap,.role-card.selected .role-icon-wrap{transform:scale(1.12)}
+.role-card .name{font-weight:700;font-size:1rem;margin-bottom:4px}
+#cardUploader .name{color:#1558b0}
+#cardReviewer .name{color:#146c43}
+.role-card .desc{font-size:.72rem;color:#999;line-height:1.5}
+.role-check{position:absolute;top:9px;right:9px;width:18px;height:18px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.65rem;font-weight:900;opacity:0;transition:opacity .15s}
+#cardUploader.selected .role-check{opacity:1;background:#1a73e8;color:#fff}
+#cardReviewer.selected .role-check{opacity:1;background:#198754;color:#fff}
+.login-box button{width:100%;padding:10px;background:#1a73e8;color:#fff;border:none;border-radius:8px;font-size:1rem;font-weight:700;cursor:pointer}
+.login-box button:hover{background:#1558b0}
+.role-badge-uploader{background:#dbeafe;color:#1558b0;border-radius:12px;padding:2px 9px;font-size:.78rem;font-weight:700}
+.role-badge-reviewer{background:#d1fae5;color:#146c43;border-radius:12px;padding:2px 9px;font-size:.78rem;font-weight:700}
+</style>
+</head>
+<body>
+<style>
+#demoBanner{position:fixed;top:0;left:0;right:0;z-index:300;background:linear-gradient(90deg,#ffd60a,#ffb703);color:#222;padding:8px 18px;font-size:.82rem;line-height:1.45;display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;box-shadow:0 1px 4px rgba(0,0,0,.15);font-weight:500}
+#demoBanner .dot{width:6px;height:6px;border-radius:50%;background:#222;display:inline-block;margin:0 4px;opacity:.4}
+#demoBanner a{color:#1a3a8a;text-decoration:underline;font-weight:700}
+#demoBanner a:hover{color:#0d47a1}
+body{padding-top:40px}
+@media(max-width:640px){#demoBanner{font-size:.75rem;padding:7px 10px}body{padding-top:58px}}
+</style>
+<div id="demoBanner">
+  <span>🧪 这是 <strong>PicReview 演示版本</strong>，所有操作仅保存在你当前的浏览器会话中，刷新即恢复初始数据。</span>
+  <span class="dot"></span>
+  <span>生产版本（含多人实时同步）部署在团队内部。</span>
+</div>
+<div id="loginMask">
+  <div class="login-box">
+    <h2>PicReview · Demo</h2>
+    <p class="sub">随便输个名字、选个角色就能进。建议选「审核」体验通过 / 打回 / 评论；选「上传」体验上传 / 替换 / 删除。</p>
+    <input id="nameInput" type="text" placeholder="你的名字（随便填，例如：访客）" maxlength="20"/>
+    <div class="role-pick">
+      <div class="role-card" id="cardUploader" data-role="uploader"><div class="role-check">✓</div><div class="role-icon-wrap">📤</div><div class="name">上传</div><div class="desc">上传 / 删除 / 替换</div></div>
+      <div class="role-card" id="cardReviewer" data-role="reviewer"><div class="role-check">✓</div><div class="role-icon-wrap">🔍</div><div class="name">审核</div><div class="desc">通过 / 打回 / 评论</div></div>
+    </div>
+    <button id="enterBtn">进入</button>
+  </div>
+</div>
+<header>
+  <h1 id="headerTitle" title="返回项目列表">PicReview</h1>
+  <span id="roleLabel"></span>
+  <button id="logoutBtn">切换</button>
+</header>
+<main>
+  <!-- 项目列表视图 -->
+  <div id="projectsView">
+    <div class="projects-header">
+      <h2>📁 所有项目</h2>
+      <button class="btn-new-folder" id="btnNewFolder">+ 新建项目</button>
+    </div>
+    <div class="proj-filter-bar">
+      <button class="active" data-pf="all">全部</button>
+      <button data-pf="active">进行中</button>
+      <button data-pf="completed">已完结</button>
+    </div>
+    <div class="projects-grid" id="projectsGrid"></div>
+  </div>
+  <!-- 图片视图 -->
+  <div id="imagesView" style="display:none">
+    <div class="back-bar">
+      <button class="btn-back" id="btnBack">← 返回</button>
+      <span class="project-title" id="projectTitle"></span>
+      <button class="btn-import-table" id="btnImportTable" style="margin-left:auto" title="上传 CSV 表格，前三列依次为序号、关键词、造句">📥 导入表格</button>
+      <button class="btn-import-table secondary" id="btnClearTable" style="display:none" title="清空当前项目的表格">清空</button>
+      <button class="btn-complete" id="btnComplete" style="display:none">✓ 标记完结</button>
+      <input type="file" id="tableFileInput" accept=".csv,.txt,.xlsx,.xls" style="display:none"/>
+    </div>
+    <div class="projects-search" id="imgSearchBar">
+      <input id="imgSearch" type="text" placeholder="搜索文件名…"/>
+    </div>
+    <div id="uploadArea">
+      <div style="font-size:2.5rem">📤</div>
+      <p><strong>点击或拖拽图片到此处上传</strong></p>
+      <p>支持 JPG / PNG / WEBP，可多选批量上传</p>
+      <input id="fileInput" type="file" accept="image/*" multiple/>
+      <div id="uploadProgress"><div class="bar" id="progressBar"></div></div>
+      <p id="uploadStatus" style="margin-top:6px;font-size:.85rem;color:#555"></p>
+    </div>
+    <div class="filter-bar">
+      <button class="active" data-filter="all">全部</button>
+      <button data-filter="pending">待审核</button>
+      <button data-filter="approved">已通过</button>
+      <button data-filter="claimed">已认领</button>
+      <button data-filter="rejected">已打回</button>
+      <span id="statsBar"></span>
+      <div style="display:flex;gap:6px;margin-left:8px">
+        <button class="view-btn active" data-view="grid">🖼 卡片</button>
+        <button class="view-btn" data-view="table">📊 表格</button>
+      </div>
+    </div>
+    <div class="batch-bar" id="batchBar">
+      <label><input type="checkbox" id="chkSelectMode"/> 多选</label>
+      <label><input type="checkbox" id="chkSelectAll"/> 全选当前列表</label>
+      <button type="button" class="primary" id="btnBatchDownload">下载选中</button>
+      <button type="button" class="danger" id="btnBatchDelete" style="display:none">删除选中</button>
+      <span id="batchCount">已选 0 张</span>
+    </div>
+    <div id="grid"></div>
+    <div id="tableView">
+      <table id="statusTable">
+        <thead><tr><th>序号<button type="button" data-action="copy-ids" title="复制所有序号" style="margin-left:6px;padding:2px 6px;border:1px solid #c8d3e8;background:#eaf2ff;color:#1a73e8;border-radius:4px;cursor:pointer;font-size:.7rem;vertical-align:middle;line-height:1.4">📋 复制</button></th><th>关键词</th><th>造句</th><th>状态</th><th>上传人</th></tr></thead>
+        <tbody id="statusTbody"></tbody>
+      </table>
+    </div>
+    <div id="emptyHint" style="display:none">暂无图片</div>
+  </div>
+</main>
+<div id="toastContainer"></div>
+<div id="modal">
+  <div class="modal-box">
+    <div class="modal-img-wrap">
+      <div class="modal-claim-pin" id="modalClaimPin"></div>
+      <button class="nav-btn" id="btnPrev">&#8592;</button>
+      <img id="modalImg" src="" alt=""/>
+      <button class="nav-btn" id="btnNext">&#8594;</button>
+      <span id="navCounter"></span>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:0"><h3 id="modalFilename" style="margin:0"></h3><button class="btn-rename" id="btnRename" title="改名" style="display:none">✏️</button></div>
+      <p id="modalSentence" style="font-size:.85rem;color:#1a73e8;margin-bottom:6px;display:none"></p>
+      <p id="modalUploader" style="font-size:.78rem;color:#888;margin-bottom:12px"></p>
+      <div id="reviewerSection">
+        <p style="font-size:.83rem;font-weight:600;margin-bottom:8px">添加标签（可多选）</p>
+        <div class="tags">
+          <span class="tag" data-tag="有描边">有描边</span>
+          <span class="tag" data-tag="风格问题">风格问题</span>
+          <span class="tag" data-tag="剧情问题">剧情问题</span>
+          <span class="tag" data-tag="形象/场景问题">形象/场景问题</span>
+          <span class="tag" data-tag="色彩/文字问题">色彩/文字问题</span>
+        </div>
+        <textarea id="commentInput" placeholder="写评论或打回原因（可选）"></textarea>
+        <div style="margin-bottom:10px">
+          <button type="button" class="btn-claim" id="btnClaim" style="display:none">我来改！</button>
+          <button type="button" class="btn-claim-secondary" id="btnUnclaim" style="display:none;margin-left:8px">取消认领</button>
+        </div>
+      </div>
+      <div id="commentsList" class="comments-list"></div>
+      <div class="modal-actions">
+        <button class="btn-delete" id="btnDelete">🗑 删除</button>
+        <button class="btn-close" id="modalClose">关闭</button>
+        <button class="btn-reject" id="btnReject">✗ 打回</button>
+        <button class="btn-approve" id="btnApprove">✓ 通过</button>
+      </div>
+      <div id="replaceSection" style="display:none;margin-top:14px;border-top:1px solid #eee;padding-top:14px">
+        <p style="font-size:.83rem;color:#842029;margin-bottom:8px">⚠ 此图已被打回，上传替换图片：</p>
+        <input id="replaceInput" type="file" accept="image/*"/>
+        <button class="replaceBtn" id="replaceBtn" style="margin-top:8px">上传替换图片</button>
+        <p id="replaceStatus" style="font-size:.8rem;margin-top:6px"></p>
+      </div>
+    </div>
+  </div>
+</div>
+<script type="module">
+window.addEventListener("error",e=>{
+  let box=document.getElementById("__errbox");
+  if(!box){box=document.createElement("div");box.id="__errbox";box.style.cssText="position:fixed;top:0;left:0;right:0;z-index:99999;background:#b00020;color:#fff;padding:10px 16px;font:13px/1.5 monospace;white-space:pre-wrap;max-height:40vh;overflow:auto";document.body.appendChild(box);}
+  box.textContent="JS 错误：\n"+(e.message||e.error&&e.error.message||"")+"\n"+(e.filename||"")+":"+(e.lineno||"")+"\n"+((e.error&&e.error.stack)||"");
+});
+window.addEventListener("unhandledrejection",e=>{
+  let box=document.getElementById("__errbox");
+  if(!box){box=document.createElement("div");box.id="__errbox";box.style.cssText="position:fixed;top:0;left:0;right:0;z-index:99999;background:#b00020;color:#fff;padding:10px 16px;font:13px/1.5 monospace;white-space:pre-wrap;max-height:40vh;overflow:auto";document.body.appendChild(box);}
+  box.textContent="Promise 错误：\n"+((e.reason&&(e.reason.message||e.reason))||e.reason)+"\n"+((e.reason&&e.reason.stack)||"");
+});
+import { createClient } from "./mock-sb.js";
+const WORD_MAP={
+  "1001":{kw:"name",zh:"名字",i12:null,i18:null,i25:"1001name.png"},
+  "1002":{kw:"nice",zh:"令人愉快的；友好的",i12:null,i18:null,i25:"1002nice.png"},
+  "1003":{kw:"ear",zh:"耳朵",i12:null,i18:null,i25:"1003ear.png"},
+  "1004":{kw:"hand",zh:"手",i12:null,i18:null,i25:"1004hand.png"},
+  "1005":{kw:"eye",zh:"眼睛",i12:null,i18:null,i25:"1005eye.png"},
+  "1006":{kw:"mouth",zh:"嘴",i12:null,i18:null,i25:"1006mouth.png"},
+  "1007":{kw:"arm",zh:"胳膊",i12:null,i18:null,i25:"1007arm.png"},
+  "1008":{kw:"can",zh:"可以",i12:null,i18:null,i25:"1008can.png"},
+  "1009":{kw:"share",zh:"分享",i12:null,i18:null,i25:"1009share.png"},
+  "1010":{kw:"smile",zh:"微笑；笑",i12:null,i18:null,i25:"1010smile.png"},
+  "1011":{kw:"listen",zh:"听；倾听",i12:null,i18:"1011listen.png",i25:null},
+  "1012":{kw:"help",zh:"帮助",i12:null,i18:null,i25:"1012help.png"},
+  "1013":{kw:"say",zh:"说；讲",i12:null,i18:null,i25:"1013say.png"},
+  "1014":{kw:"friend",zh:"朋友",i12:null,i18:"1014friend.png",i25:null},
+  "1015":{kw:"good",zh:"好的",i12:null,i18:null,i25:"1015good.png"},
+  "1016":{kw:"mum",zh:"（口语）妈妈",i12:null,i18:null,i25:"1016mum.png"},
+  "1017":{kw:"dad",zh:"（口语）爸爸",i12:null,i18:null,i25:"1017dad.png"},
+  "1018":{kw:"grandma",zh:"奶奶；姥姥",i12:null,i18:"1018grandma.png",i25:null},
+  "1019":{kw:"grandpa",zh:"爷爷；姥爷",i12:null,i18:"1019grandpa.png",i25:null},
+  "1020":{kw:"grandfather",zh:"（外）祖父；爷爷；姥爷；外公",i12:"1020grandfather.png",i18:null,i25:null},
+  "1021":{kw:"grandmother",zh:"（外）祖母；奶奶；姥姥；外婆",i12:"1021grandmother.png",i18:null,i25:null},
+  "1022":{kw:"mother",zh:"母亲；妈妈",i12:null,i18:"1022mother.png",i25:null},
+  "1023":{kw:"father",zh:"父亲；爸爸",i12:null,i18:"1023father.png",i25:null},
+  "1024":{kw:"me",zh:"我",i12:null,i18:null,i25:"1024me.png"},
+  "1025":{kw:"sister",zh:"姐；妹",i12:null,i18:"1025sister.png",i25:null},
+  "1026":{kw:"family",zh:"家；家庭",i12:null,i18:"1026family.png",i25:null},
+  "1027":{kw:"have",zh:"有",i12:null,i18:null,i25:"1027have.png"},
+  "1028":{kw:"big",zh:"大的",i12:null,i18:null,i25:"1028big.png"},
+  "1029":{kw:"cousin",zh:"堂（表）兄弟；堂（表）姐妹",i12:null,i18:"1029cousin.png",i25:null},
+  "1030":{kw:"brother",zh:"哥；弟",i12:null,i18:"1030brother.png",i25:null},
+  "1031":{kw:"baby",zh:"婴儿",i12:null,i18:null,i25:"1031baby.png"},
+  "1032":{kw:"uncle",zh:"伯父；叔父；舅父；姑父；姨父",i12:null,i18:null,i25:"1032uncle.png"},
+  "1033":{kw:"aunt",zh:"伯母；婶母；舅母；姑母；姨母",i12:null,i18:null,i25:"1033aunt.png"},
+  "1034":{kw:"small",zh:"小的",i12:null,i18:null,i25:"1034small.png"},
+  "1035":{kw:"like",zh:"喜欢",i12:null,i18:null,i25:"1035like.png"},
+  "1036":{kw:"dog",zh:"狗",i12:null,i18:null,i25:"1036dog.png"},
+  "1037":{kw:"pet",zh:"宠物",i12:null,i18:null,i25:"1037pet.png"},
+  "1038":{kw:"cat",zh:"猫",i12:null,i18:null,i25:"1038cat.png"},
+  "1039":{kw:"fish",zh:"鱼；鱼肉",i12:null,i18:null,i25:"1039fish.png"},
+  "1040":{kw:"bird",zh:"鸟",i12:null,i18:null,i25:"1040bird.png"},
+  "1041":{kw:"rabbit",zh:"兔",i12:null,i18:"1041rabbit.png",i25:null},
+  "1042":{kw:"go",zh:"去；走",i12:null,i18:null,i25:"1042go.png"},
+  "1043":{kw:"zoo",zh:"动物园",i12:null,i18:null,i25:"1043zoo.png"},
+  "1044":{kw:"fox",zh:"狐狸",i12:null,i18:null,i25:"1044fox.png"},
+  "1045":{kw:"Miss",zh:"老师；女士",i12:null,i18:null,i25:"1045Miss.png"},
+  "1046":{kw:"panda",zh:"大熊猫",i12:null,i18:null,i25:"1046panda.png"},
+  "1047":{kw:"red panda",zh:"小熊猫",i12:"1047redpanda.png",i18:null,i25:null},
+  "1048":{kw:"cute",zh:"可爱的",i12:null,i18:null,i25:"1048cute.png"},
+  "1049":{kw:"monkey",zh:"猴子",i12:null,i18:"1049monkey.png",i25:null},
+  "1050":{kw:"tiger",zh:"老虎",i12:null,i18:null,i25:"1050tiger.png"},
+  "1051":{kw:"elephant",zh:"大象",i12:null,i18:"1051elephant.png",i25:null},
+  "1052":{kw:"lion",zh:"狮；狮子",i12:null,i18:null,i25:"1052lion.png"},
+  "1053":{kw:"animal",zh:"动物",i12:null,i18:"1053animal.png",i25:null},
+  "1054":{kw:"giraffe",zh:"长颈鹿",i12:null,i18:"1054giraffe.png",i25:null},
+  "1055":{kw:"tall",zh:"高的",i12:null,i18:null,i25:"1055tall.png"},
+  "1056":{kw:"fast",zh:"快的",i12:null,i18:null,i25:"1056fast.png"},
+  "1057":{kw:"apple",zh:"苹果",i12:null,i18:null,i25:"1057apple.png"},
+  "1058":{kw:"banana",zh:"香蕉",i12:null,i18:"1058banana.png",i25:null},
+  "1059":{kw:"farm",zh:"农场",i12:null,i18:null,i25:"1059farm.png"},
+  "1060":{kw:"air",zh:"空气",i12:null,i18:null,i25:"1060air.png"},
+  "1061":{kw:"orange",zh:"橙子；柑橘",i12:null,i18:"1061orange.png",i25:null},
+  "1062":{kw:"grape",zh:"葡萄",i12:null,i18:null,i25:"1062grape.png"},
+  "1063":{kw:"school",zh:"学校",i12:null,i18:"1063school.png",i25:null},
+  "1064":{kw:"garden",zh:"花园",i12:null,i18:"1064garden.png",i25:null},
+  "1065":{kw:"need",zh:"需要",i12:null,i18:null,i25:"1065need.png"},
+  "1066":{kw:"water",zh:"给...浇水；水",i12:null,i18:null,i25:"1066water.png"},
+  "1067":{kw:"flower",zh:"花；花朵",i12:null,i18:"1067flower.png",i25:null},
+  "1068":{kw:"grass",zh:"草；草地",i12:null,i18:null,i25:"1068grass.png"},
+  "1069":{kw:"plant",zh:"种植；植物",i12:null,i18:null,i25:"1069plant.png"},
+  "1070":{kw:"new",zh:"新的",i12:null,i18:null,i25:"1070new.png"},
+  "1071":{kw:"tree",zh:"树",i12:null,i18:null,i25:"1071tree.png"},
+  "1072":{kw:"sun",zh:"阳光；太阳",i12:null,i18:null,i25:"1072sun.png"},
+  "1073":{kw:"give",zh:"给",i12:null,i18:null,i25:"1073give.png"},
+  "1074":{kw:"them",zh:"它们；他们；她们",i12:null,i18:null,i25:"1074them.png"},
+  "1075":{kw:"colour",zh:"颜色",i12:null,i18:"1075colour.png",i25:null},
+  "1076":{kw:"orange",zh:"橙红色；橙红色的",i12:null,i18:"1076orange.png",i25:null},
+  "1077":{kw:"green",zh:"绿色；绿色的",i12:null,i18:null,i25:"1077green.png"},
+  "1078":{kw:"red",zh:"红色；红色的",i12:null,i18:null,i25:"1078red.png"},
+  "1079":{kw:"blue",zh:"蓝色；蓝色的",i12:null,i18:null,i25:"1079blue.png"},
+  "1080":{kw:"make",zh:"使出现；做",i12:null,i18:null,i25:"1080make.png"},
+  "1081":{kw:"purple",zh:"紫色；紫色的",i12:null,i18:"1081purple.png",i25:null},
+  "1082":{kw:"brown",zh:"棕色；棕色的",i12:null,i18:null,i25:"1082brown.png"},
+  "1083":{kw:"bear",zh:"熊",i12:null,i18:null,i25:"1083bear.png"},
+  "1084":{kw:"yellow",zh:"黄色；黄色的",i12:null,i18:"1084yellow.png",i25:null},
+  "1085":{kw:"duck",zh:"鸭",i12:null,i18:null,i25:"1085duck.png"},
+  "1086":{kw:"sea",zh:"海；海洋",i12:null,i18:null,i25:"1086sea.png"},
+  "1087":{kw:"some",zh:"一些",i12:null,i18:null,i25:"1087some.png"},
+  "1088":{kw:"pink",zh:"粉色；粉色的",i12:null,i18:null,i25:"1088pink.png"},
+  "1089":{kw:"draw",zh:"画",i12:null,i18:null,i25:"1089draw.png"},
+  "1090":{kw:"white",zh:"白色；白色的",i12:null,i18:null,i25:"1090white.png"},
+  "1091":{kw:"black",zh:"黑色；黑色的",i12:null,i18:null,i25:"1091black.png"},
+  "1092":{kw:"old",zh:"（多少）岁；年纪；旧的",i12:null,i18:null,i25:"1092old.png"},
+  "1093":{kw:"five",zh:"五",i12:null,i18:null,i25:"1093five.png"},
+  "1094":{kw:"year",zh:"年纪；年",i12:null,i18:null,i25:"1094year.png"},
+  "1095":{kw:"one",zh:"一",i12:null,i18:null,i25:"1095one.png"},
+  "1096":{kw:"two",zh:"二",i12:null,i18:null,i25:"1096two.png"},
+  "1097":{kw:"three",zh:"三",i12:null,i18:null,i25:"1097three.png"},
+  "1098":{kw:"four",zh:"四",i12:null,i18:null,i25:"1098four.png"},
+  "1099":{kw:"ten",zh:"十",i12:null,i18:null,i25:"1099ten.png"},
+  "1100":{kw:"six",zh:"六",i12:null,i18:null,i25:"1100six.png"},
+  "1101":{kw:"seven",zh:"七",i12:null,i18:null,i25:"1101seven.png"},
+  "1102":{kw:"eight",zh:"八",i12:null,i18:null,i25:"1102eight.png"},
+  "1103":{kw:"nine",zh:"九",i12:null,i18:null,i25:"1103nine.png"},
+  "1104":{kw:"oˈclock",zh:"（表示整点）...点钟",i12:null,i18:"1104oclock.png",i25:null},
+  "1105":{kw:"cut",zh:"切块",i12:null,i18:null,i25:"1105cut.png"},
+  "1106":{kw:"eat",zh:"吃",i12:null,i18:null,i25:"1106eat.png"},
+  "1107":{kw:"cake",zh:"蛋糕",i12:null,i18:null,i25:"1107cake.png"},
+  "2001":{kw:"where",zh:"在哪里；到哪里",i12:null,i18:null,i25:"2001where.png"},
+  "2002":{kw:"from",zh:"来自，从...来",i12:null,i18:null,i25:"2002from.png"},
+  "2003":{kw:"about",zh:"大约；左右",i12:null,i18:null,i25:"2003about.png"},
+  "2004":{kw:"today",zh:"今天",i12:null,i18:null,i25:"2004today.png"},
+  "2005":{kw:"teacher",zh:"教师",i12:null,i18:"2005teacher.png",i25:null},
+  "2006":{kw:"student",zh:"学生",i12:null,i18:"2006student.png",i25:null},
+  "2007":{kw:"after",zh:"在...后面",i12:null,i18:null,i25:"2007after.png"},
+  "2008":{kw:"who",zh:"谁；什么人",i12:null,i18:null,i25:"2008who.png"},
+  "2009":{kw:"girl",zh:"女孩",i12:null,i18:null,i25:"2009girl.png"},
+  "2010":{kw:"neighbour",zh:"邻居",i12:"2010neighbour.png",i18:null,i25:null},
+  "2011":{kw:"boy",zh:"男孩",i12:null,i18:null,i25:"2011boy.png"},
+  "2012":{kw:"woman",zh:"成年女子；妇女",i12:null,i18:null,i25:"2012woman.png"},
+  "2013":{kw:"man",zh:"成年男子；男人",i12:null,i18:null,i25:"2013man.png"},
+  "2014":{kw:"Mr",zh:"先生",i12:null,i18:null,i25:"2014Mr.png"},
+  "2015":{kw:"classmate",zh:"同班同学",i12:"2015classmate.png",i18:null,i25:null},
+  "2016":{kw:"he",zh:"他",i12:null,i18:null,i25:"2016he.png"},
+  "2017":{kw:"English",zh:"英语的；英语",i12:null,i18:"2017English.png",i25:null},
+  "2018":{kw:"she",zh:"她",i12:null,i18:null,i25:"2018she.png"},
+  "2019":{kw:"very",zh:"很；非常；十分",i12:null,i18:null,i25:"2019very.png"},
+  "2020":{kw:"UK",zh:"英国",i12:null,i18:null,i25:"2020UK.png"},
+  "2021":{kw:"China",zh:"中国",i12:null,i18:null,i25:"2021China.png"},
+  "2022":{kw:"Canada",zh:"加拿大",i12:null,i18:"2022Canada.png",i25:null},
+  "2023":{kw:"USA",zh:"美国",i12:null,i18:null,i25:"2023USA.png"},
+  "2024":{kw:"has",zh:"具有（某种外表或特征）",i12:null,i18:null,i25:"2024has.png"},
+  "2025":{kw:"long",zh:"（长度或距离）长的",i12:null,i18:null,i25:"2025long.png"},
+  "2026":{kw:"body",zh:"身体",i12:null,i18:null,i25:"2026body.png"},
+  "2027":{kw:"short",zh:"短的；个子矮的",i12:null,i18:null,i25:"2027short.png"},
+  "2028":{kw:"leg",zh:"腿",i12:null,i18:null,i25:"2028leg.png"},
+  "2029":{kw:"right",zh:"准确，确切，恰当",i12:null,i18:null,i25:"2029right.png"},
+  "2030":{kw:"fat",zh:"肥的；肥胖的",i12:null,i18:null,i25:"2030fat.png"},
+  "2031":{kw:"thin",zh:"瘦的",i12:null,i18:null,i25:"2031thin.png"},
+  "2032":{kw:"slow",zh:"缓慢的；慢的",i12:null,i18:null,i25:"2032slow.png"},
+  "2033":{kw:"love",zh:"喜爱；爱",i12:null,i18:null,i25:"2033love.png"},
+  "2034":{kw:"tail",zh:"尾；尾巴",i12:null,i18:null,i25:"2034tail.png"},
+  "2035":{kw:"her",zh:"她；她的",i12:null,i18:null,i25:"2035her.png"},
+  "2036":{kw:"gift",zh:"礼物",i12:null,i18:null,i25:"2036gift.png"},
+  "2037":{kw:"picture",zh:"图画；绘画",i12:null,i18:"2037picture.png",i25:null},
+  "2038":{kw:"card",zh:"贺卡；慰问卡；卡片",i12:null,i18:null,i25:"2038card.png"},
+  "2039":{kw:"sing",zh:"唱(歌)；演唱",i12:null,i18:null,i25:"2039sing.png"},
+  "2040":{kw:"dance",zh:"跳舞",i12:null,i18:null,i25:"2040dance.png"},
+  "2041":{kw:"face",zh:"脸；面孔",i12:null,i18:null,i25:"2041face.png"},
+  "2042":{kw:"all",zh:"所有；全部",i12:null,i18:null,i25:"2042all.png"},
+  "2043":{kw:"so",zh:"这么，那么",i12:null,i18:null,i25:"2043so.png"},
+  "2044":{kw:"talk",zh:"（用某种语言）讲，说；说话",i12:null,i18:null,i25:"2044talk.png"},
+  "2045":{kw:"song",zh:"歌；歌曲",i12:null,i18:null,i25:"2045song.png"},
+  "2046":{kw:"or",zh:"或；或者；还是",i12:null,i18:null,i25:"2046or.png"},
+  "2047":{kw:"much",zh:"许多；大量",i12:null,i18:null,i25:"2047much.png"},
+  "2048":{kw:"eraser",zh:"橡皮",i12:null,i18:"2048eraser.png",i25:null},
+  "2049":{kw:"find",zh:"找到；找回",i12:null,i18:null,i25:"2049find.png"},
+  "2050":{kw:"ruler",zh:"直尺",i12:null,i18:null,i25:"2050ruler.png"},
+  "2051":{kw:"pen",zh:"钢笔",i12:null,i18:null,i25:"2051pen.png"},
+  "2052":{kw:"pencil",zh:"铅笔",i12:null,i18:"2052pencil.png",i25:null},
+  "2053":{kw:"book",zh:"书；书籍",i12:null,i18:null,i25:"2053book.png"},
+  "2054":{kw:"bag",zh:"包；袋",i12:null,i18:null,i25:"2054bag.png"},
+  "2055":{kw:"paper",zh:"纸",i12:null,i18:null,i25:"2055paper.png"},
+  "2056":{kw:"these",zh:"这些",i12:null,i18:null,i25:"2056these.png"},
+  "2057":{kw:"see",zh:"看见",i12:null,i18:null,i25:"2057see.png"},
+  "2058":{kw:"smell",zh:"闻（气味）",i12:null,i18:null,i25:"2058smell.png"},
+  "2059":{kw:"taste",zh:"尝（味道）",i12:null,i18:null,i25:"2059taste.png"},
+  "2060":{kw:"hear",zh:"听见；听到",i12:null,i18:null,i25:"2060hear.png"},
+  "2061":{kw:"touch",zh:"触摸；碰",i12:null,i18:null,i25:"2061touch.png"},
+  "2062":{kw:"learn",zh:"学；学习",i12:null,i18:null,i25:"2062learn.png"},
+  "2063":{kw:"nose",zh:"鼻；鼻子",i12:null,i18:null,i25:"2063nose.png"},
+  "2064":{kw:"tongue",zh:"舌；舌头",i12:null,i18:"2064tongue.png",i25:null},
+  "2065":{kw:"class",zh:"课；班级",i12:null,i18:null,i25:"2065class.png"},
+  "2066":{kw:"in class",zh:"在课堂上",i12:"2066inclass.png",i18:null,i25:null},
+  "2067":{kw:"computer",zh:"计算机；电脑",i12:null,i18:"2067computer.png",i25:null},
+  "2068":{kw:"breakfast",zh:"早餐；早饭",i12:"2068breakfast.png",i18:null,i25:null},
+  "2069":{kw:"time",zh:"时间",i12:null,i18:null,i25:"2069time.png"},
+  "2070":{kw:"bread",zh:"面包",i12:null,i18:null,i25:"2070bread.png"},
+  "2071":{kw:"egg",zh:"（作食物用的）蛋；鸡蛋",i12:null,i18:null,i25:"2071egg.png"},
+  "2072":{kw:"milk",zh:"（牛或羊等的）奶",i12:null,i18:null,i25:"2072milk.png"},
+  "2073":{kw:"noodle",zh:"（常用复数）面条",i12:null,i18:"2073noodle.png",i25:null},
+  "2074":{kw:"juice",zh:"果汁",i12:null,i18:null,i25:"2074juice.png"},
+  "2075":{kw:"rice",zh:"大米",i12:null,i18:null,i25:"2075rice.png"},
+  "2076":{kw:"meat",zh:"肉",i12:null,i18:null,i25:"2076meat.png"},
+  "2077":{kw:"vegetable",zh:"蔬菜",i12:"2077vegetable.png",i18:null,i25:null},
+  "2078":{kw:"healthy",zh:"健康的",i12:null,i18:"2078healthy.png",i25:null},
+  "2079":{kw:"plate",zh:"盘子",i12:null,i18:null,i25:"2079plate.png"},
+  "2080":{kw:"soup",zh:"汤",i12:null,i18:null,i25:"2080soup.png"},
+  "2081":{kw:"fruit",zh:"水果",i12:null,i18:null,i25:"2081fruit.png"},
+  "2082":{kw:"colourful",zh:"五彩缤纷的",i12:"2082colourful.png",i18:null,i25:null},
+  "2083":{kw:"candy",zh:"糖果",i12:null,i18:null,i25:"2083candy.png"},
+  "2084":{kw:"yummy",zh:"很好吃的",i12:null,i18:null,i25:"2084yummy.png"},
+  "2085":{kw:"at",zh:"在（某处）",i12:null,i18:null,i25:"2085at.png"},
+  "2086":{kw:"boat",zh:"小船；舟",i12:null,i18:null,i25:"2086boat.png"},
+  "2087":{kw:"cool",zh:"酷的，绝妙的",i12:null,i18:null,i25:"2087cool.png"},
+  "2088":{kw:"keep",zh:"保有；留着",i12:null,i18:null,i25:"2088keep.png"},
+  "2089":{kw:"home",zh:"家；住所",i12:null,i18:null,i25:"2089home.png"},
+  "2090":{kw:"ball",zh:"球",i12:null,i18:null,i25:"2090ball.png"},
+  "2091":{kw:"doll",zh:"玩偶；玩具娃娃",i12:null,i18:null,i25:"2091doll.png"},
+  "2092":{kw:"car",zh:"小汽车；轿车",i12:null,i18:null,i25:"2092car.png"},
+  "2093":{kw:"on",zh:"（覆盖、附着）在...上",i12:null,i18:null,i25:"2093on.png"},
+  "2094":{kw:"shelf",zh:"架子",i12:null,i18:null,i25:"2094shelf.png"},
+  "2095":{kw:"in",zh:"在...内；在...中",i12:null,i18:null,i25:"2095in.png"},
+  "2096":{kw:"box",zh:"盒子",i12:null,i18:null,i25:"2096box.png"},
+  "2097":{kw:"cap",zh:"帽子",i12:null,i18:null,i25:"2097cap.png"},
+  "2098":{kw:"map",zh:"地图",i12:null,i18:null,i25:"2098map.png"},
+  "2099":{kw:"under",zh:"在（或到、通过）...下面",i12:null,i18:null,i25:"2099under.png"},
+  "2100":{kw:"still",zh:"还是；仍然",i12:null,i18:null,i25:"2100still.png"},
+  "2101":{kw:"put",zh:"放；安置",i12:null,i18:null,i25:"2101put.png"},
+  "2102":{kw:"fifteen",zh:"十五",i12:null,i18:"2102fifteen.png",i25:null},
+  "2103":{kw:"twelve",zh:"十二",i12:null,i18:"2103twelve.png",i25:null},
+  "2104":{kw:"fourteen",zh:"十四",i12:null,i18:"2104fourteen.png",i25:null},
+  "2105":{kw:"thirteen",zh:"十三",i12:null,i18:"2105thirteen.png",i25:null},
+  "2106":{kw:"eleven",zh:"十一",i12:null,i18:"2106eleven.png",i25:null},
+  "2107":{kw:"twenty",zh:"二十",i12:null,i18:"2107twenty.png",i25:null},
+  "2108":{kw:"seventeen",zh:"十七",i12:"2108seventeen.png",i18:null,i25:null},
+  "2109":{kw:"sixteen",zh:"十六",i12:null,i18:"2109sixteen.png",i25:null},
+  "2110":{kw:"eighteen",zh:"十八",i12:null,i18:"2110eighteen.png",i25:null},
+  "2111":{kw:"nineteen",zh:"十九",i12:null,i18:"2111nineteen.png",i25:null},
+  "2112":{kw:"piggy bank",zh:"猪形储钱罐",i12:"2112piggybank.png",i18:null,i25:null},
+  "2113":{kw:"pay",zh:"付费",i12:null,i18:null,i25:"2113pay.png"},
+  "2114":{kw:"back",zh:"回到原处",i12:null,i18:null,i25:"2114back.png"},
+  "3001":{kw:"PE",zh:"体育（课）",i12:null,i18:null,i25:"3001PE.png"},
+  "3002":{kw:"job",zh:"工作；职业",i12:null,i18:null,i25:"3002job.png"},
+  "3003":{kw:"doctor",zh:"医生",i12:null,i18:"3003doctor.png",i25:null},
+  "3004":{kw:"farmer",zh:"农场主；农民",i12:null,i18:"3004farmer.png",i25:null},
+  "3005":{kw:"nurse",zh:"护士",i12:null,i18:null,i25:"3005nurse.png"},
+  "3006":{kw:"office worker",zh:"公司职员",i12:"3006officeworker.png",i18:null,i25:null},
+  "3007":{kw:"factory worker",zh:"工厂工人",i12:"3007factoryworker.png",i18:null,i25:null},
+  "3008":{kw:"busy",zh:"忙碌的",i12:null,i18:null,i25:"3008busy.png"},
+  "3009":{kw:"tired",zh:"疲倦的",i12:null,i18:null,i25:"3009tired.png"},
+  "3010":{kw:"chore",zh:"家庭杂务",i12:null,i18:null,i25:"3010chore.png"},
+  "3011":{kw:"cook",zh:"烹饪；煮",i12:null,i18:null,i25:"3011cook.png"},
+  "3012":{kw:"clean",zh:"打扫；干净的",i12:null,i18:null,i25:"3012clean.png"},
+  "3013":{kw:"room",zh:"房间",i12:null,i18:null,i25:"3013room.png"},
+  "3014":{kw:"look after",zh:"照顾",i12:"3014lookafter.png",i18:null,i25:null},
+  "3015":{kw:"sweep",zh:"扫",i12:null,i18:null,i25:"3015sweep.png"},
+  "3016":{kw:"floor",zh:"地板；地面",i12:null,i18:null,i25:"3016floor.png"},
+  "3017":{kw:"together",zh:"在一起；共同",i12:null,i18:"3017together.png",i25:null},
+  "3018":{kw:"people",zh:"人；人们",i12:null,i18:"3018people.png",i25:null},
+  "3019":{kw:"child",zh:"儿童；小孩",i12:null,i18:null,i25:"3019child.png"},
+  "3020":{kw:"his",zh:"他的",i12:null,i18:null,i25:"3020his.png"},
+  "3021":{kw:"strong",zh:"强壮的",i12:null,i18:"3021strong.png",i25:null},
+  "3022":{kw:"hair",zh:"头发",i12:null,i18:null,i25:"3022hair.png"},
+  "3023":{kw:"also",zh:"也",i12:null,i18:null,i25:"3023also.png"},
+  "3024":{kw:"kind",zh:"友好的",i12:null,i18:null,i25:"3024kind.png"},
+  "3025":{kw:"quiet",zh:"文静的",i12:null,i18:null,i25:"3025quiet.png"},
+  "3026":{kw:"best",zh:"最好的",i12:null,i18:null,i25:"3026best.png"},
+  "3027":{kw:"read",zh:"阅读",i12:null,i18:null,i25:"3027read.png"},
+  "3028":{kw:"Chinese",zh:"中文；中国人；中国的",i12:null,i18:"3028Chinese.png",i25:null},
+  "3029":{kw:"play",zh:"玩耍",i12:null,i18:null,i25:"3029play.png"},
+  "3030":{kw:"game",zh:"游戏",i12:null,i18:null,i25:"3030game.png"},
+  "3031":{kw:"football",zh:"足球运动",i12:null,i18:"3031football.png",i25:null},
+  "3032":{kw:"basketball",zh:"篮球运动",i12:"3032basketball.png",i18:null,i25:null},
+  "3033":{kw:"always",zh:"总是",i12:null,i18:"3033always.png",i25:null},
+  "3034":{kw:"afternoon",zh:"下午",i12:"3034afternoon.png",i18:null,i25:null},
+  "3035":{kw:"there",zh:"（表示存在或发生）；在那里",i12:null,i18:null,i25:"3035there.png"},
+  "3036":{kw:"playground",zh:"游乐场；操场",i12:"3036playground.png",i18:null,i25:null},
+  "3037":{kw:"park",zh:"公园",i12:null,i18:null,i25:"3037park.png"},
+  "3038":{kw:"over",zh:"在...的远端（或对面）",i12:null,i18:null,i25:"3038over.png"},
+  "3039":{kw:"hospital",zh:"医院",i12:null,i18:"3039hospital.png",i25:null},
+  "3040":{kw:"shop",zh:"商店",i12:null,i18:null,i25:"3040shop.png"},
+  "3041":{kw:"toilet",zh:"厕所；卫生间",i12:null,i18:"3041toilet.png",i25:null},
+  "3042":{kw:"bus stop",zh:"公共汽车站",i12:"3042busstop.png",i18:null,i25:null},
+  "3043":{kw:"library",zh:"图书馆",i12:null,i18:"3043library.png",i25:null},
+  "3044":{kw:"sport",zh:"体育运动",i12:null,i18:null,i25:"3044sport.png"},
+  "3045":{kw:"walk",zh:"散步；行走",i12:null,i18:null,i25:"3045walk.png"},
+  "3046":{kw:"community",zh:"社区",i12:"3046community.png",i18:null,i25:null},
+  "3047":{kw:"favourite",zh:"最喜欢的",i12:"3047favourite.png",i18:null,i25:null},
+  "3048":{kw:"place",zh:"地方；场所",i12:null,i18:null,i25:"3048place.png"},
+  "3049":{kw:"photo",zh:"照片",i12:null,i18:null,i25:"3049photo.png"},
+  "3050":{kw:"story",zh:"故事",i12:null,i18:null,i25:"3050story.png"},
+  "3051":{kw:"buy",zh:"购买",i12:null,i18:null,i25:"3051buy.png"},
+  "3052":{kw:"firefighter",zh:"消防队员",i12:"3052firefighter.png",i18:null,i25:null},
+  "3053":{kw:"why",zh:"为什么",i12:null,i18:null,i25:"3053why.png"},
+  "3054":{kw:"driver",zh:"司机",i12:null,i18:"3054driver.png",i25:null},
+  "3055":{kw:"cleaner",zh:"清洁工",i12:null,i18:"3055cleaner.png",i25:null},
+  "3056":{kw:"cook",zh:"厨师",i12:null,i18:null,i25:"3056cook.png"},
+  "3057":{kw:"delivery worker",zh:"快递员",i12:"3057deliveryworker.png",i18:null,i25:null},
+  "3058":{kw:"police officer",zh:"警察；警员",i12:"3058policeofficer.png",i18:null,i25:null},
+  "3059":{kw:"a lot of",zh:"大量；许多",i12:"3059alotof.png",i18:null,i25:null},
+  "3060":{kw:"now",zh:"现在",i12:null,i18:null,i25:"3060now.png"},
+  "3061":{kw:"make the bed",zh:"铺床",i12:"3061makethebed.png",i18:null,i25:null},
+  "3062":{kw:"old",zh:"过去的；年纪大的；老的",i12:null,i18:null,i25:"3062old.png"},
+  "3063":{kw:"tell",zh:"讲述；告诉",i12:null,i18:null,i25:"3063tell.png"},
+  "3064":{kw:"everyone",zh:"每人",i12:null,i18:"3064everyone.png",i25:null},
+  "3065":{kw:"Ms",zh:"女士",i12:null,i18:null,i25:"3065Ms.png"},
+  "3066":{kw:"speak",zh:"说话；发言",i12:null,i18:null,i25:"3066speak.png"},
+  "3067":{kw:"weather",zh:"天气",i12:null,i18:"3067weather.png",i25:null},
+  "3068":{kw:"sunny",zh:"阳光充足的",i12:null,i18:null,i25:"3068sunny.png"},
+  "3069":{kw:"hot",zh:"热的",i12:null,i18:null,i25:"3069hot.png"},
+  "3070":{kw:"bad",zh:"令人不快的；坏的",i12:null,i18:null,i25:"3070bad.png"},
+  "3071":{kw:"cold",zh:"冷的",i12:null,i18:null,i25:"3071cold.png"},
+  "3072":{kw:"windy",zh:"多风的",i12:null,i18:null,i25:"3072windy.png"},
+  "3073":{kw:"cloudy",zh:"多云的",i12:null,i18:"3073cloudy.png",i25:null},
+  "3074":{kw:"rainy",zh:"阴雨的",i12:null,i18:null,i25:"3074rainy.png"},
+  "3075":{kw:"snowy",zh:"多雪的",i12:null,i18:null,i25:"3075snowy.png"},
+  "3076":{kw:"cool",zh:"凉爽的",i12:null,i18:null,i25:"3076cool.png"},
+  "3077":{kw:"warm",zh:"温暖的",i12:null,i18:null,i25:"3077warm.png"},
+  "3078":{kw:"tomorrow",zh:"在明天",i12:null,i18:"3078tomorrow.png",i25:null},
+  "3079":{kw:"rain",zh:"下雨；雨",i12:null,i18:null,i25:"3079rain.png"},
+  "3080":{kw:"closed",zh:"关闭的",i12:null,i18:"3080closed.png",i25:null},
+  "3081":{kw:"film",zh:"电影",i12:null,i18:null,i25:"3081film.png"},
+  "3082":{kw:"idea",zh:"想法；主意",i12:null,i18:null,i25:"3082idea.png"},
+  "3083":{kw:"fly",zh:"操纵（飞行器等）；飞",i12:null,i18:null,i25:"3083fly.png"},
+  "3084":{kw:"kite",zh:"风筝",i12:null,i18:null,i25:"3084kite.png"},
+  "3085":{kw:"snowman",zh:"雪人",i12:null,i18:"3085snowman.png",i25:null},
+  "3086":{kw:"fun",zh:"享乐；乐趣",i12:null,i18:null,i25:"3086fun.png"},
+  "3087":{kw:"their",zh:"他们的；她们的；它们的",i12:null,i18:null,i25:"3087their.png"},
+  "3088":{kw:"swim",zh:"游泳",i12:null,i18:null,i25:"3088swim.png"},
+  "3089":{kw:"Sydney",zh:"悉尼",i12:null,i18:"3089Sydney.png",i25:null},
+  "3090":{kw:"whose",zh:"谁的",i12:null,i18:null,i25:"3090whose.png"},
+  "3091":{kw:"sweater",zh:"毛衣",i12:null,i18:"3091sweater.png",i25:null},
+  "3092":{kw:"sock",zh:"短袜",i12:null,i18:null,i25:"3092sock.png"},
+  "3093":{kw:"mine",zh:"我的",i12:null,i18:null,i25:"3093mine.png"},
+  "3094":{kw:"wear",zh:"穿；戴",i12:null,i18:null,i25:"3094wear.png"},
+  "3095":{kw:"shirt",zh:"衬衫",i12:null,i18:null,i25:"3095shirt.png"},
+  "3096":{kw:"coat",zh:"大衣；外套",i12:null,i18:null,i25:"3096coat.png"},
+  "3097":{kw:"dress",zh:"连衣裙",i12:null,i18:null,i25:"3097dress.png"},
+  "3098":{kw:"which",zh:"哪一个；哪一些",i12:null,i18:null,i25:"3098which.png"},
+  "3099":{kw:"season",zh:"季节",i12:null,i18:"3099season.png",i25:null},
+  "3100":{kw:"winter",zh:"冬天",i12:null,i18:"3100winter.png",i25:null},
+  "3101":{kw:"snow",zh:"下雪；雪",i12:null,i18:null,i25:"3101snow.png"},
+  "3102":{kw:"get together",zh:"聚会",i12:"3102gettogether.png",i18:null,i25:null},
+  "3103":{kw:"spring",zh:"春天",i12:null,i18:"3103spring.png",i25:null},
+  "3104":{kw:"summer",zh:"夏天",i12:null,i18:"3104summer.png",i25:null},
+  "3105":{kw:"autumn",zh:"秋天",i12:null,i18:"3105autumn.png",i25:null},
+  "3106":{kw:"T-shirt",zh:"T恤衫",i12:null,i18:"3106T-shirt.png",i25:null},
+  "3107":{kw:"fall",zh:"落下",i12:null,i18:null,i25:"3107fall.png"},
+  "3108":{kw:"leaf",zh:"叶",i12:null,i18:null,i25:"3108leaf.png"},
+  "3109":{kw:"glove",zh:"手套",i12:null,i18:null,i25:"3109glove.png"},
+  "3110":{kw:"then",zh:"然后；那时",i12:null,i18:null,i25:"3110then.png"},
+  "4001":{kw:"first floor",zh:"一楼",i12:"4001firstfloor.png",i18:null,i25:null},
+  "4002":{kw:"second floor",zh:"二楼",i12:"4002secondfloor.png",i18:null,i25:null},
+  "4003":{kw:"teachers' office",zh:"教师办公室",i12:"4003teachersoffice.png",i18:null,i25:null},
+  "4004":{kw:"library",zh:"图书馆",i12:null,i18:"4004library.png",i25:null},
+  "4005":{kw:"playground",zh:"操场",i12:"4005playground.png",i18:null,i25:null},
+  "4006":{kw:"computer room",zh:"计算机房",i12:"4006computerroom.png",i18:null,i25:null},
+  "4007":{kw:"art room",zh:"美术教室",i12:"4007artroom.png",i18:null,i25:null},
+  "4008":{kw:"music room",zh:"音乐教室",i12:"4008musicroom.png",i18:null,i25:null},
+  "4009":{kw:"next to",zh:"紧邻；在...近旁",i12:"4009nextto.png",i18:null,i25:null},
+  "4010":{kw:"homework",zh:"作业",i12:null,i18:"4010homework.png",i25:null},
+  "4011":{kw:"class",zh:"班；班级",i12:null,i18:null,i25:"4011class.png"},
+  "4012":{kw:"forty",zh:"四十",i12:null,i18:null,i25:"4012forty.png"},
+  "4013":{kw:"way",zh:"方向",i12:null,i18:null,i25:"4013way.png"},
+  "4014":{kw:"breakfast",zh:"早餐；早饭",i12:"4014breakfast.png",i18:null,i25:null},
+  "4015":{kw:"English class",zh:"英语课",i12:"4015Englishclass.png",i18:null,i25:null},
+  "4016":{kw:"lunch",zh:"午餐；午饭",i12:null,i18:null,i25:"4016lunch.png"},
+  "4017":{kw:"music class",zh:"音乐课",i12:"4017musicclass.png",i18:null,i25:null},
+  "4018":{kw:"PE class",zh:"体育课",i12:"4018PEclass.png",i18:null,i25:null},
+  "4019":{kw:"dinner",zh:"（中午或晚上吃的）正餐",i12:null,i18:"4019dinner.png",i25:null},
+  "4020":{kw:"get up",zh:"起床",i12:"4020getup.png",i18:null,i25:null},
+  "4021":{kw:"go to school",zh:"去上学",i12:"4021gotoschool.png",i18:null,i25:null},
+  "4022":{kw:"go home",zh:"回家",i12:"4022gohome.png",i18:null,i25:null},
+  "4023":{kw:"go to bed",zh:"上床睡觉",i12:"4023gotobed.png",i18:null,i25:null},
+  "4024":{kw:"over",zh:"结束",i12:null,i18:null,i25:"4024over.png"},
+  "4025":{kw:"now",zh:"现在；目前",i12:null,i18:null,i25:"4025now.png"},
+  "4026":{kw:"o'clock",zh:"（表示整点）...点钟",i12:null,i18:"4026oclock.png",i25:null},
+  "4027":{kw:"kid",zh:"小孩",i12:null,i18:null,i25:"4027kid.png"},
+  "4028":{kw:"thirty",zh:"三十",i12:null,i18:"4028thirty.png",i25:null},
+  "4029":{kw:"fifty",zh:"五十",i12:null,i18:null,i25:"4029fifty.png"},
+  "4030":{kw:"twenty",zh:"二十",i12:null,i18:"4030twenty.png",i25:null},
+  "4031":{kw:"hurry up",zh:"快点",i12:"4031hurryup.png",i18:null,i25:null},
+  "4032":{kw:"come on",zh:"快；加油",i12:"4032comeon.png",i18:null,i25:null},
+  "4033":{kw:"just a minute",zh:"稍等一会儿",i12:"4033justaminute.png",i18:null,i25:null},
+  "4034":{kw:"cold",zh:"寒冷的；冷的",i12:null,i18:null,i25:"4034cold.png"},
+  "4035":{kw:"cool",zh:"凉的；凉爽的",i12:null,i18:null,i25:"4035cool.png"},
+  "4036":{kw:"warm",zh:"温暖的；暖和的",i12:null,i18:null,i25:"4036warm.png"},
+  "4037":{kw:"hot",zh:"热的；烫的",i12:null,i18:null,i25:"4037hot.png"},
+  "4038":{kw:"sunny",zh:"阳光充足的",i12:null,i18:null,i25:"4038sunny.png"},
+  "4039":{kw:"windy",zh:"多风的；风大的",i12:null,i18:null,i25:"4039windy.png"},
+  "4040":{kw:"cloudy",zh:"阴天的；多云的",i12:null,i18:"4040cloudy.png",i25:null},
+  "4041":{kw:"snowy",zh:"下雪（多）的",i12:null,i18:null,i25:"4041snowy.png"},
+  "4042":{kw:"rainy",zh:"阴雨的；多雨的",i12:null,i18:null,i25:"4042rainy.png"},
+  "4043":{kw:"outside",zh:"在户外",i12:null,i18:"4043outside.png",i25:null},
+  "4044":{kw:"be careful",zh:"小心",i12:"4044becareful.png",i18:null,i25:null},
+  "4045":{kw:"weather",zh:"天气",i12:null,i18:"4045weather.png",i25:null},
+  "4046":{kw:"New York",zh:"纽约",i12:"4046NewYork.png",i18:null,i25:null},
+  "4047":{kw:"how about...",zh:"...怎么样？…情况如何？",i12:"4047howabout.png",i18:null,i25:null},
+  "4048":{kw:"degree",zh:"度；度数",i12:null,i18:"4048degree.png",i25:null},
+  "4049":{kw:"world",zh:"世界",i12:null,i18:null,i25:"4049world.png"},
+  "4050":{kw:"London",zh:"伦敦",i12:null,i18:"4050London.png",i25:null},
+  "4051":{kw:"Moscow",zh:"莫斯科",i12:null,i18:"4051Moscow.png",i25:null},
+  "4052":{kw:"Singapore",zh:"新加坡（市）",i12:"4052Singapore.png",i18:null,i25:null},
+  "4053":{kw:"Sydney",zh:"悉尼",i12:null,i18:"4053Sydney.png",i25:null},
+  "4054":{kw:"fly",zh:"放（风筝等）",i12:null,i18:null,i25:"4054fly.png"},
+  "4055":{kw:"love",zh:"爱你的",i12:null,i18:null,i25:"4055love.png"},
+  "4056":{kw:"tomato",zh:"西红柿",i12:null,i18:"4056tomato.png",i25:null},
+  "4057":{kw:"potato",zh:"马铃薯；土豆",i12:null,i18:"4057potato.png",i25:null},
+  "4058":{kw:"green beans",zh:"豆角；四季豆",i12:"4058greenbeans.png",i18:null,i25:null},
+  "4059":{kw:"carrot",zh:"胡萝卜",i12:null,i18:"4059carrot.png",i25:null},
+  "4060":{kw:"horse",zh:"马",i12:null,i18:null,i25:"4060horse.png"},
+  "4061":{kw:"cow",zh:"母牛；奶牛",i12:null,i18:null,i25:"4061cow.png"},
+  "4062":{kw:"sheep",zh:"羊；绵羊",i12:null,i18:null,i25:"4062sheep.png"},
+  "4063":{kw:"hen",zh:"母鸡",i12:null,i18:null,i25:"4063hen.png"},
+  "4064":{kw:"these",zh:"这些",i12:null,i18:null,i25:"4064these.png"},
+  "4065":{kw:"yum",zh:"表示味道或气味非常好",i12:null,i18:null,i25:"4065yum.png"},
+  "4066":{kw:"animal",zh:"兽；动物",i12:null,i18:"4066animal.png",i25:null},
+  "4067":{kw:"those",zh:"那些",i12:null,i18:null,i25:"4067those.png"},
+  "4068":{kw:"garden",zh:"花园；菜园",i12:null,i18:"4068garden.png",i25:null},
+  "4069":{kw:"farm",zh:"农场",i12:null,i18:null,i25:"4069farm.png"},
+  "4070":{kw:"goat",zh:"山羊",i12:null,i18:null,i25:"4070goat.png"},
+  "4071":{kw:"eat",zh:"吃",i12:null,i18:null,i25:"4071eat.png"},
+  "4072":{kw:"clothes",zh:"衣服；服装",i12:null,i18:"4072clothes.png",i25:null},
+  "4073":{kw:"pants",zh:"裤子",i12:null,i18:null,i25:"4073pants.png"},
+  "4074":{kw:"hat",zh:"（常指带檐的）帽子",i12:null,i18:null,i25:"4074hat.png"},
+  "4075":{kw:"dress",zh:"连衣裙",i12:null,i18:null,i25:"4075dress.png"},
+  "4076":{kw:"skirt",zh:"女裙",i12:null,i18:null,i25:"4076skirt.png"},
+  "4077":{kw:"coat",zh:"外衣；大衣",i12:null,i18:null,i25:"4077coat.png"},
+  "4078":{kw:"sweater",zh:"毛衣",i12:null,i18:"4078sweater.png",i25:null},
+  "4079":{kw:"sock",zh:"短袜",i12:null,i18:null,i25:"4079sock.png"},
+  "4080":{kw:"shorts",zh:"短裤",i12:null,i18:"4080shorts.png",i25:null},
+  "4081":{kw:"jacket",zh:"夹克衫",i12:null,i18:"4081jacket.png",i25:null},
+  "4082":{kw:"shirt",zh:"（尤指男士）衬衫",i12:null,i18:null,i25:"4082shirt.png"},
+  "4083":{kw:"yours",zh:"你的；你们的",i12:null,i18:null,i25:"4083yours.png"},
+  "4084":{kw:"whose",zh:"谁的",i12:null,i18:null,i25:"4084whose.png"},
+  "4085":{kw:"mine",zh:"我的",i12:null,i18:null,i25:"4085mine.png"},
+  "4086":{kw:"pack",zh:"收拾（行李）",i12:null,i18:null,i25:"4086pack.png"},
+  "4087":{kw:"wait",zh:"等待",i12:null,i18:null,i25:"4087wait.png"},
+  "4088":{kw:"glove",zh:"（分手指的）手套",i12:null,i18:null,i25:"4088glove.png"},
+  "4089":{kw:"scarf",zh:"围巾；披巾",i12:null,i18:null,i25:"4089scarf.png"},
+  "4090":{kw:"umbrella",zh:"伞；雨伞",i12:null,i18:"4090umbrella.png",i25:null},
+  "4091":{kw:"sunglasses",zh:"太阳镜",i12:"4091sunglasses.png",i18:null,i25:null},
+  "4092":{kw:"pretty",zh:"美观的；精致的",i12:null,i18:"4092pretty.png",i25:null},
+  "4093":{kw:"expensive",zh:"昂贵的；花钱多的",i12:"4093expensive.png",i18:null,i25:null},
+  "4094":{kw:"cheap",zh:"花钱少的；便宜的",i12:null,i18:null,i25:"4094cheap.png"},
+  "4095":{kw:"nice",zh:"好的",i12:null,i18:null,i25:"4095nice.png"},
+  "4096":{kw:"try on",zh:"试穿",i12:"4096tryon.png",i18:null,i25:null},
+  "4097":{kw:"size",zh:"尺码；号",i12:null,i18:null,i25:"4097size.png"},
+  "4098":{kw:"of course",zh:"当然",i12:"4098ofcourse.png",i18:null,i25:null},
+  "4099":{kw:"too",zh:"太；过于",i12:null,i18:null,i25:"4099too.png"},
+  "4100":{kw:"just",zh:"正好；恰好",i12:null,i18:null,i25:"4100just.png"},
+  "4101":{kw:"how much",zh:"多少钱",i12:"4101howmuch.png",i18:null,i25:null},
+  "4102":{kw:"eighty",zh:"八十",i12:null,i18:"4102eighty.png",i25:null},
+  "4103":{kw:"dollar",zh:"元",i12:null,i18:"4103dollar.png",i25:null},
+  "4104":{kw:"sale",zh:"特价销售；大减价",i12:null,i18:null,i25:"4104sale.png"},
+  "4105":{kw:"more",zh:"更多的",i12:null,i18:null,i25:"4105more.png"},
+  "4106":{kw:"us",zh:"我们",i12:null,i18:null,i25:"4106us.png"},
+  "5001":{kw:"old",zh:"老的；年纪大的",i12:null,i18:null,i25:"5001old.png"},
+  "5002":{kw:"young",zh:"年轻的；岁数不大的",i12:null,i18:null,i25:"5002young.png"},
+  "5003":{kw:"funny",zh:"滑稽的；可笑的",i12:null,i18:null,i25:"5003funny.png"},
+  "5004":{kw:"kind",zh:"体贴的；慈祥的；宽容的",i12:null,i18:null,i25:"5004kind.png"},
+  "5005":{kw:"strict",zh:"要求严格的；严厉的",i12:null,i18:"5005strict.png",i25:null},
+  "5006":{kw:"polite",zh:"有礼貌的；客气的",i12:null,i18:"5006polite.png",i25:null},
+  "5007":{kw:"hard-working",zh:"工作努力的；辛勤的",i12:"5007hard-working.png",i18:null,i25:null},
+  "5008":{kw:"helpful",zh:"有用的；愿意帮忙的",i12:null,i18:"5008helpful.png",i25:null},
+  "5009":{kw:"clever",zh:"聪明的；聪颖的",i12:null,i18:"5009clever.png",i25:null},
+  "5010":{kw:"shy",zh:"羞怯的；腼腆的；怕生的",i12:null,i18:null,i25:"5010shy.png"},
+  "5011":{kw:"know",zh:"知道；了解",i12:null,i18:null,i25:"5011know.png"},
+  "5012":{kw:"our",zh:"我们的",i12:null,i18:null,i25:"5012our.png"},
+  "5013":{kw:"Ms",zh:"女士",i12:null,i18:null,i25:"5013Ms.png"},
+  "5014":{kw:"will",zh:"（谈及将来）将要",i12:null,i18:null,i25:"5014eat.png"},
+  "5015":{kw:"sometimes",zh:"有时；间或",i12:"5015sometimes.png",i18:null,i25:null},
+  "5016":{kw:"robot",zh:"机器人",i12:null,i18:null,i25:"5016robot.png"},
+  "5017":{kw:"him",zh:"（用作宾语或表语）他",i12:null,i18:null,i25:"5017him.png"},
+  "5018":{kw:"speak",zh:"会讲（某种语言）；说话",i12:null,i18:null,i25:"5018speak.png"},
+  "5019":{kw:"finish",zh:"完成；做好",i12:null,i18:"5019finish.png",i25:null},
+  "5020":{kw:"Monday",zh:"星期一",i12:null,i18:"5020Monday.png",i25:null},
+  "5021":{kw:"Tuesday",zh:"星期二",i12:null,i18:"5021Tuesday.png",i25:null},
+  "5022":{kw:"Wednesday",zh:"星期三",i12:"5022Wednesday.png",i18:null,i25:null},
+  "5023":{kw:"Thursday",zh:"星期四",i12:null,i18:"5023Thursday.png",i25:null},
+  "5024":{kw:"Friday",zh:"星期五",i12:null,i18:"5024Friday.png",i25:null},
+  "5025":{kw:"Saturday",zh:"星期六",i12:null,i18:"5025Saturday.png",i25:null},
+  "5026":{kw:"Sunday",zh:"星期日",i12:null,i18:"5026Sunday.png",i25:null},
+  "5027":{kw:"weekend",zh:"周末",i12:null,i18:"5027weekend.png",i25:null},
+  "5028":{kw:"wash",zh:"洗",i12:null,i18:null,i25:"5028wash.png"},
+  "5029":{kw:"wash my clothes",zh:"洗我的衣服",i12:"5029washmyclothes.png",i18:null,i25:null},
+  "5030":{kw:"watch",zh:"看",i12:null,i18:null,i25:"5030watch.png"},
+  "5031":{kw:"watch TV",zh:"看电视",i12:"5031watchTV.png",i18:null,i25:null},
+  "5032":{kw:"do",zh:"做；干",i12:null,i18:null,i25:"5032do.png"},
+  "5033":{kw:"do homework",zh:"做作业",i12:"5033dohomework.png",i18:null,i25:null},
+  "5034":{kw:"read",zh:"看；读",i12:null,i18:null,i25:"5034read.png"},
+  "5035":{kw:"read books",zh:"看书",i12:"5035readbooks.png",i18:null,i25:null},
+  "5036":{kw:"play",zh:"踢；玩；参加（体育运动）",i12:null,i18:null,i25:"5036play.png"},
+  "5037":{kw:"play football",zh:"踢足球",i12:"5037playfootball.png",i18:null,i25:null},
+  "5038":{kw:"cooking",zh:"烹饪；烹调",i12:null,i18:"5038cooking.png",i25:null},
+  "5039":{kw:"often",zh:"时常；常常",i12:null,i18:null,i25:"5039often.png"},
+  "5040":{kw:"park",zh:"公园",i12:null,i18:null,i25:"5040park.png"},
+  "5041":{kw:"tired",zh:"疲倦的",i12:null,i18:null,i25:"5041tired.png"},
+  "5042":{kw:"sport",zh:"体育运动",i12:null,i18:null,i25:"5042sport.png"},
+  "5043":{kw:"play sports",zh:"做体育运动",i12:"5043playsports.png",i18:null,i25:null},
+  "5044":{kw:"should",zh:"（常用于纠正别人）应该",i12:null,i18:"5044should.png",i25:null},
+  "5045":{kw:"every",zh:"每一个，每个",i12:null,i18:null,i25:"5045every.png"},
+  "5046":{kw:"day",zh:"一天；一日",i12:null,i18:null,i25:"5046day.png"},
+  "5047":{kw:"schedule",zh:"工作计划；日程安排",i12:null,i18:"5047schedule.png",i25:null},
+  "5048":{kw:"sandwich",zh:"三明治",i12:null,i18:"5048sandwich.png",i25:null},
+  "5049":{kw:"salad",zh:"蔬菜沙拉；混合沙拉",i12:null,i18:null,i25:"5049salad.png"},
+  "5050":{kw:"hamburger",zh:"汉堡包",i12:"5050hamburger.png",i18:null,i25:null},
+  "5051":{kw:"ice cream",zh:"冰激凌",i12:"5051icecream.png",i18:null,i25:null},
+  "5052":{kw:"tea",zh:"茶；茶水",i12:null,i18:null,i25:"5052tea.png"},
+  "5053":{kw:"fresh",zh:"新鲜的；刚摘的",i12:null,i18:null,i25:"5053fresh.png"},
+  "5054":{kw:"healthy",zh:"健康的",i12:null,i18:"5054healthy.png",i25:null},
+  "5055":{kw:"delicious",zh:"美味的；可口的",i12:"5055delicious.png",i18:null,i25:null},
+  "5056":{kw:"hot",zh:"辣的；辛辣的",i12:null,i18:null,i25:"5056hot.png"},
+  "5057":{kw:"sweet",zh:"含糖的；甜的",i12:null,i18:null,i25:"5057sweet.png"},
+  "5058":{kw:"drink",zh:"喝；饮",i12:null,i18:null,i25:"5058drink.png"},
+  "5059":{kw:"thirsty",zh:"渴的；口渴的",i12:null,i18:"5059thirsty.png",i25:null},
+  "5060":{kw:"favourite",zh:"特别喜爱的",i12:"5060favourite.png",i18:null,i25:null},
+  "5061":{kw:"food",zh:"食物",i12:null,i18:null,i25:"5061food.png"},
+  "5062":{kw:"Dear",zh:"亲爱的",i12:null,i18:null,i25:"5062Dear.png"},
+  "5063":{kw:"onion",zh:"洋葱；葱头",i12:null,i18:null,i25:"5063onion.png"},
+  "5064":{kw:"sing",zh:"唱；唱歌",i12:null,i18:null,i25:"5064sing.png"},
+  "5065":{kw:"song",zh:"歌曲",i12:null,i18:null,i25:"5065song.png"},
+  "5066":{kw:"sing English songs",zh:"唱英文歌曲",i12:"5066singEnglishsongs.png",i18:null,i25:null},
+  "5067":{kw:"play the pipa",zh:"弹琵琶",i12:"5067playthepipa.png",i18:null,i25:null},
+  "5068":{kw:"kung fu",zh:"功夫；武术",i12:"5068kungfu.png",i18:null,i25:null},
+  "5069":{kw:"do kung fu",zh:"练武术",i12:"5069dokungfu.png",i18:null,i25:null},
+  "5070":{kw:"dance",zh:"跳舞",i12:null,i18:null,i25:"5070dance.png"},
+  "5071":{kw:"draw",zh:"画",i12:null,i18:null,i25:"5071draw.png"},
+  "5072":{kw:"cartoon",zh:"漫画",i12:null,i18:"5072cartoon.png",i25:null},
+  "5073":{kw:"draw cartoons",zh:"画漫画",i12:"5073drawcartoons.png",i18:null,i25:null},
+  "5074":{kw:"cook",zh:"烹调；烹饪",i12:null,i18:null,i25:"5074cook.png"},
+  "5075":{kw:"swim",zh:"游泳",i12:null,i18:null,i25:"5075swim.png"},
+  "5076":{kw:"play basketball",zh:"打篮球",i12:"5076playbasketball.png",i18:null,i25:null},
+  "5077":{kw:"ping-pong",zh:"乒乓球",i12:"5077pingpong.png",i18:null,i25:null},
+  "5078":{kw:"play ping-pong",zh:"打乒乓球",i12:"5078playping-pong.png",i18:null,i25:null},
+  "5079":{kw:"speak English",zh:"说英语",i12:"5079speakEnglish.png",i18:null,i25:null},
+  "5080":{kw:"we'll",zh:"我们将要",i12:null,i18:null,i25:"5080well.png"},
+  "5081":{kw:"party",zh:"聚会；派对",i12:null,i18:null,i25:"5081party.png"},
+  "5082":{kw:"next",zh:"下一个的；接下来的",i12:null,i18:null,i25:"5082next.png"},
+  "5083":{kw:"wonderful",zh:"极好的；了不起的",i12:"5083wonderful.png",i18:null,i25:null},
+  "5084":{kw:"learn",zh:"学；学习；学会",i12:null,i18:null,i25:"5084learn.png"},
+  "5085":{kw:"any",zh:"任何的；任一的",i12:null,i18:null,i25:"5085any.png"},
+  "5086":{kw:"problem",zh:"问题",i12:null,i18:"5086problem.png",i25:null},
+  "5087":{kw:"no problem",zh:"没问题",i12:"5087noproblem.png",i18:null,i25:null},
+  "5088":{kw:"want",zh:"要；想要",i12:null,i18:null,i25:"5088want.png"},
+  "5089":{kw:"send",zh:"邮寄；发送",i12:null,i18:null,i25:"5089send.png"},
+  "5090":{kw:"email",zh:"电子邮件",i12:null,i18:null,i25:"5090email.png"},
+  "5091":{kw:"at",zh:"（后面接邮件地址）",i12:null,i18:null,i25:"5091at.png"},
+  "5092":{kw:"clock",zh:"时钟；钟",i12:null,i18:null,i25:"5092clock.png"},
+  "5093":{kw:"plant",zh:"植物",i12:null,i18:null,i25:"5093plant.png"},
+  "5094":{kw:"bottle",zh:"瓶子",i12:null,i18:"5094bottle.png",i25:null},
+  "5095":{kw:"water bottle",zh:"水瓶",i12:"5095waterbottle.png",i18:null,i25:null},
+  "5096":{kw:"bike",zh:"自行车；脚踏车",i12:null,i18:null,i25:"5096bike.png"},
+  "5097":{kw:"photo",zh:"照片；相片",i12:null,i18:null,i25:"5097photo.png"},
+  "5098":{kw:"front",zh:"正面",i12:null,i18:null,i25:"5098front.png"},
+  "5099":{kw:"in front of",zh:"在...前面",i12:"5099infrontof.png",i18:null,i25:null},
+  "5100":{kw:"between",zh:"在...中间",i12:null,i18:"5100between.png",i25:null},
+  "5101":{kw:"above",zh:"在（或向）...上面",i12:null,i18:null,i25:"5101above.png"},
+  "5102":{kw:"beside",zh:"在旁边（附近）",i12:null,i18:"5102beside.png",i25:null},
+  "5103":{kw:"behind",zh:"在（或向）...后面",i12:null,i18:"5103behind.png",i25:null},
+  "5104":{kw:"there",zh:"表示存在或发生",i12:null,i18:null,i25:"5104there.png"},
+  "5105":{kw:"grandparent",zh:"祖父/母；外祖父/母",i12:"5105grandparent.png",i18:null,i25:null},
+  "5106":{kw:"their",zh:"他们的；她们的；它们的",i12:null,i18:null,i25:"5106their.png"},
+  "5107":{kw:"house",zh:"房屋；房子；住宅",i12:null,i18:null,i25:"5107house.png"},
+  "5108":{kw:"lot",zh:"大量；许多",i12:null,i18:null,i25:"5108lot.png"},
+  "5109":{kw:"lots of",zh:"大量；许多",i12:"5109lotsof.png",i18:null,i25:null},
+  "5110":{kw:"flower",zh:"花；花朵",i12:null,i18:"5110flower.png",i25:null},
+  "5111":{kw:"move",zh:"搬家",i12:null,i18:null,i25:"5111move.png"},
+  "5112":{kw:"dirty",zh:"肮脏的",i12:null,i18:null,i25:"5112dirty.png"},
+  "5113":{kw:"everywhere",zh:"处处；到处",i12:"5113everywhere.png",i18:null,i25:null},
+  "5114":{kw:"mouse",zh:"老鼠",i12:null,i18:null,i25:"5114mouse.png"},
+  "5115":{kw:"live",zh:"住；居住",i12:null,i18:null,i25:"5115live.png"},
+  "5116":{kw:"nature",zh:"自然界；大自然",i12:null,i18:"5116nature.png",i25:null},
+  "5117":{kw:"forest",zh:"森林；林区",i12:null,i18:"5117forest.png",i25:null},
+  "5118":{kw:"river",zh:"河；江",i12:null,i18:null,i25:"5118river.png"},
+  "5119":{kw:"lake",zh:"湖；湖泊",i12:null,i18:null,i25:"5119lake.png"},
+  "5120":{kw:"mountain",zh:"高山；山岳",i12:null,i18:"5120mountain.png",i25:null},
+  "5121":{kw:"hill",zh:"山丘；小山",i12:null,i18:null,i25:"5121hill.png"},
+  "5122":{kw:"tree",zh:"树；树木；乔木",i12:null,i18:null,i25:"5122tree.png"},
+  "5123":{kw:"bridge",zh:"桥",i12:null,i18:"5123bridge.png",i25:null},
+  "5124":{kw:"building",zh:"建筑物；房子；楼房",i12:null,i18:"5124building.png",i25:null},
+  "5125":{kw:"village",zh:"村庄；村镇",i12:null,i18:"5125village.png",i25:null},
+  "5126":{kw:"house",zh:"房屋；房子；住宅",i12:null,i18:null,i25:"5126house.png"},
+  "5127":{kw:"boating",zh:"划船",i12:null,i18:"5127boating.png",i25:null},
+  "5128":{kw:"go boating",zh:"去划船",i12:"5128goboating.png",i18:null,i25:null},
+  "5129":{kw:"aren't",zh:"不是",i12:null,i18:"5129arent.png",i25:null},
+  "5130":{kw:"rabbit",zh:"兔；野兔",i12:null,i18:"5130rabbit.png",i25:null},
+  "5131":{kw:"high",zh:"高的",i12:null,i18:null,i25:"5131high.png"},
+  "6001":{kw:"eat breakfast",zh:"吃早饭",i12:"6001eatbreakfast.png",i18:null,i25:null},
+  "6002":{kw:"have ... class",zh:"上…课",i12:"6002haveclass.png",i18:null,i25:null},
+  "6003":{kw:"play sports",zh:"进行体育运动",i12:"6003playsports.png",i18:null,i25:null},
+  "6004":{kw:"exercise",zh:"活动；运动",i12:null,i18:"6004exercise.png",i25:null},
+  "6005":{kw:"do morning exercises",zh:"做早操",i12:"6005domorningexercises.png",i18:null,i25:null},
+  "6006":{kw:"eat dinner",zh:"吃晚饭",i12:"6006eatdinner.png",i18:null,i25:null},
+  "6007":{kw:"clean my room",zh:"打扫我的房间",i12:"6007cleanmyroom.png",i18:null,i25:null},
+  "6008":{kw:"go for a walk",zh:"散步",i12:"6008goforawalk.png",i18:null,i25:null},
+  "6009":{kw:"go shopping",zh:"去买东西；购物",i12:"6009goshopping.png",i18:null,i25:null},
+  "6010":{kw:"take",zh:"学习；上（课）",i12:null,i18:null,i25:"6010take.png"},
+  "6011":{kw:"dancing",zh:"跳舞；舞蹈",i12:null,i18:"6011dancing.png",i25:null},
+  "6012":{kw:"take a dancing class",zh:"上舞蹈课",i12:"6012takeadancingclass.png",i18:null,i25:null},
+  "6013":{kw:"when",zh:"什么时候；何时",i12:null,i18:null,i25:"6013when.png"},
+  "6014":{kw:"after",zh:"在（时间）后",i12:null,i18:null,i25:"6014after.png"},
+  "6015":{kw:"start",zh:"开始",i12:null,i18:null,i25:"6015start.png"},
+  "6016":{kw:"usually",zh:"通常地；惯常地",i12:null,i18:"6016usually.png",i25:null},
+  "6017":{kw:"Spain",zh:"西班牙",i12:null,i18:null,i25:"6017Spain.png"},
+  "6018":{kw:"late",zh:"晚；迟",i12:null,i18:null,i25:"6018late.png"},
+  "6019":{kw:"a.m.",zh:"午前；上午",i12:null,i18:null,i25:"6019a.m..png"},
+  "6020":{kw:"p.m.",zh:"午后；下午",i12:null,i18:null,i25:"6020p.m..png"},
+  "6021":{kw:"why",zh:"为什么",i12:null,i18:null,i25:"6021why.png"},
+  "6022":{kw:"shop",zh:"去买东西；购物",i12:null,i18:null,i25:"6022shop.png"},
+  "6023":{kw:"work",zh:"工作",i12:null,i18:null,i25:"6023work.png"},
+  "6024":{kw:"last",zh:"上一个的；刚过去的",i12:null,i18:null,i25:"6024last.png"},
+  "6025":{kw:"sound",zh:"听起来好像",i12:null,i18:null,i25:"6025sound.png"},
+  "6026":{kw:"also",zh:"还；也",i12:null,i18:null,i25:"6026also.png"},
+  "6027":{kw:"busy",zh:"忙的",i12:null,i18:null,i25:"6027busy.png"},
+  "6028":{kw:"need",zh:"需要",i12:null,i18:null,i25:"6028need.png"},
+  "6029":{kw:"play",zh:"戏剧；剧本",i12:null,i18:null,i25:"6029play.png"},
+  "6030":{kw:"letter",zh:"信",i12:null,i18:"6030letter.png",i25:null},
+  "6031":{kw:"live",zh:"居住",i12:null,i18:null,i25:"6031live.png"},
+  "6032":{kw:"island",zh:"岛",i12:null,i18:"6032island.png",i25:null},
+  "6033":{kw:"always",zh:"总是；一直",i12:null,i18:"6033always.png",i25:null},
+  "6034":{kw:"cave",zh:"山洞；洞穴",i12:null,i18:null,i25:"6034cave.png"},
+  "6035":{kw:"go swimming",zh:"去游泳",i12:"6035goswimming.png",i18:null,i25:null},
+  "6036":{kw:"win",zh:"获胜",i12:null,i18:null,i25:"6036win.png"},
+  "6037":{kw:"spring",zh:"春天",i12:null,i18:"6037spring.png",i25:null},
+  "6038":{kw:"summer",zh:"夏天",i12:null,i18:"6038summer.png",i25:null},
+  "6039":{kw:"autumn",zh:"秋天",i12:null,i18:"6039autumn.png",i25:null},
+  "6040":{kw:"winter",zh:"冬天",i12:null,i18:"6040winter.png",i25:null},
+  "6041":{kw:"season",zh:"季节",i12:null,i18:"6041season.png",i25:null},
+  "6042":{kw:"picnic",zh:"野餐",i12:null,i18:"6042picnic.png",i25:null},
+  "6043":{kw:"go on a picnic",zh:"去野餐",i12:"6043goonapicnic.png",i18:null,i25:null},
+  "6044":{kw:"pick",zh:"摘；采集",i12:null,i18:null,i25:"6044pick.png"},
+  "6045":{kw:"pick apples",zh:"摘苹果",i12:"6045pickapples.png",i18:null,i25:null},
+  "6046":{kw:"snowman",zh:"雪人",i12:null,i18:"6046snowman.png",i25:null},
+  "6047":{kw:"make a snowman",zh:"堆雪人",i12:"6047makeasnowman.png",i18:null,i25:null},
+  "6048":{kw:"go swimming",zh:"去游泳",i12:"6048goswimming.png",i18:null,i25:null},
+  "6049":{kw:"which",zh:"哪一个",i12:null,i18:null,i25:"6049which.png"},
+  "6050":{kw:"best",zh:"最；最高程度地",i12:null,i18:null,i25:"6050best.png"},
+  "6051":{kw:"snow",zh:"雪",i12:null,i18:null,i25:"6051snow.png"},
+  "6052":{kw:"good job",zh:"做得好",i12:"6052goodjob.png",i18:null,i25:null},
+  "6053":{kw:"because",zh:"因为",i12:null,i18:"6053because.png",i25:null},
+  "6054":{kw:"vacation",zh:"假期",i12:null,i18:"6054vacation.png",i25:null},
+  "6055":{kw:"all",zh:"全；完全",i12:null,i18:null,i25:"6055all.png"},
+  "6056":{kw:"pink",zh:"粉色；粉色的",i12:null,i18:null,i25:"6056pink.png"},
+  "6057":{kw:"lovely",zh:"可爱的；美丽的",i12:null,i18:"6057lovely.png",i25:null},
+  "6058":{kw:"leaf",zh:"叶子",i12:null,i18:null,i25:"6058leaf.png"},
+  "6059":{kw:"fall",zh:"落下；【美】秋天",i12:null,i18:null,i25:"6059fall.png"},
+  "6060":{kw:"paint",zh:"用颜料绘画",i12:null,i18:null,i25:"6060paint.png"},
+  "6061":{kw:"January",zh:"一月",i12:null,i18:"6061January.png",i25:null},
+  "6062":{kw:"February",zh:"二月",i12:null,i18:"6062February.png",i25:null},
+  "6063":{kw:"March",zh:"三月",i12:null,i18:null,i25:"6063March.png"},
+  "6064":{kw:"April",zh:"四月",i12:null,i18:null,i25:"6064April.png"},
+  "6065":{kw:"May",zh:"五月",i12:null,i18:null,i25:"6065May.png"},
+  "6066":{kw:"June",zh:"六月",i12:null,i18:null,i25:"6066June.png"},
+  "6067":{kw:"July",zh:"七月",i12:null,i18:null,i25:"6067July.png"},
+  "6068":{kw:"August",zh:"八月",i12:null,i18:"6068August.png",i25:null},
+  "6069":{kw:"September",zh:"九月",i12:"6069September.png",i18:null,i25:null},
+  "6070":{kw:"October",zh:"十月",i12:null,i18:"6070October.png",i25:null},
+  "6071":{kw:"November",zh:"十一月",i12:null,i18:"6071November.png",i25:null},
+  "6072":{kw:"December",zh:"十二月",i12:null,i18:"6072December.png",i25:null},
+  "6073":{kw:"few",zh:"不多；很少",i12:null,i18:null,i25:"6073few.png"},
+  "6074":{kw:"a few",zh:"一些",i12:"6074afew.png",i18:null,i25:null},
+  "6075":{kw:"thing",zh:"事情",i12:null,i18:null,i25:"6075thing.png"},
+  "6076":{kw:"meet",zh:"集会；开会",i12:null,i18:null,i25:"6076meet.png"},
+  "6077":{kw:"sports meet",zh:"运动会",i12:"6077sportsmeet.png",i18:null,i25:null},
+  "6078":{kw:"trip",zh:"旅行",i12:null,i18:null,i25:"6078trip.png"},
+  "6079":{kw:"year",zh:"年",i12:null,i18:null,i25:"6079year.png"},
+  "6080":{kw:"plant",zh:"种植",i12:null,i18:null,i25:"6080plant.png"},
+  "6081":{kw:"contest",zh:"比赛；竞赛",i12:null,i18:"6081contest.png",i25:null},
+  "6082":{kw:"labour",zh:"劳动",i12:null,i18:"6082labour.png",i25:null},
+  "6083":{kw:"Labour Day",zh:"劳动节",i12:"6083LabourDay.png",i18:null,i25:null},
+  "6084":{kw:"the Great Wall",zh:"长城",i12:"6084theGreatWall.png",i18:null,i25:null},
+  "6085":{kw:"national",zh:"国家的",i12:null,i18:"6085national.png",i25:null},
+  "6086":{kw:"National Day",zh:"国庆日",i12:"6086NationalDay.png",i18:null,i25:null},
+  "6087":{kw:"American",zh:"美国的",i12:null,i18:"6087American.png",i25:null},
+  "6088":{kw:"Thanksgiving",zh:"感恩节",i12:"6088Thanksgiving.png",i18:null,i25:null},
+  "6089":{kw:"Christmas",zh:"圣诞节",i12:"6089Christmas.png",i18:null,i25:null},
+  "6090":{kw:"game",zh:"游戏",i12:null,i18:null,i25:"6090game.png"},
+  "6091":{kw:"riddle",zh:"谜；谜语",i12:null,i18:"6091riddle.png",i25:null},
+  "6092":{kw:"act",zh:"扮演",i12:null,i18:null,i25:"6092act.png"},
+  "6093":{kw:"act out",zh:"把…表演出来",i12:"6093actout.png",i18:null,i25:null},
+  "6094":{kw:"RSVP",zh:"（尤用于请柬）请赐复",i12:null,i18:null,i25:"6094RSVP.png"},
+  "6095":{kw:"by",zh:"在…之前",i12:null,i18:null,i25:"6095by.png"},
+  "6096":{kw:"first",zh:"第一（的）",i12:null,i18:null,i25:"6096first.png"},
+  "6097":{kw:"second",zh:"第二（的）",i12:null,i18:"6097second.png",i25:null},
+  "6098":{kw:"third",zh:"第三（的）",i12:null,i18:null,i25:"6098third.png"},
+  "6099":{kw:"fourth",zh:"第四（的）",i12:null,i18:"6099fourth.png",i25:null},
+  "6100":{kw:"fifth",zh:"第五（的）",i12:null,i18:null,i25:"6100fifth.png"},
+  "6101":{kw:"twelfth",zh:"第十二（的）",i12:null,i18:"6101twelfth.png",i25:null},
+  "6102":{kw:"twentieth",zh:"第二十（的）",i12:"6102twentieth.png",i18:null,i25:null},
+  "6103":{kw:"twenty-first",zh:"第二十一（的）",i12:"6103twentyfirst.png",i18:null,i25:null},
+  "6104":{kw:"twenty-third",zh:"第二十三（的）",i12:"6104twentythird.png",i18:null,i25:null},
+  "6105":{kw:"thirtieth",zh:"第三十（的）",i12:"6105thirtieth.png",i18:null,i25:null},
+  "6106":{kw:"other",zh:"其他",i12:null,i18:null,i25:"6106other.png"},
+  "6107":{kw:"special",zh:"特殊的；特别的",i12:null,i18:"6107special.png",i25:null},
+  "6108":{kw:"show",zh:"展览",i12:null,i18:null,i25:"6108show.png"},
+  "6109":{kw:"festival",zh:"节日",i12:null,i18:"6109festival.png",i25:null},
+  "6110":{kw:"kitten",zh:"小猫",i12:null,i18:"6110kitten.png",i25:null},
+  "6111":{kw:"diary",zh:"日记",i12:null,i18:null,i25:"6111diary.png"},
+  "6112":{kw:"still",zh:"仍然；依旧；还是",i12:null,i18:null,i25:"6112still.png"},
+  "6113":{kw:"noise",zh:"声音；响声；噪音",i12:null,i18:null,i25:"6113noise.png"},
+  "6114":{kw:"fur",zh:"（某些动物的）浓密的软毛",i12:null,i18:null,i25:"6114fur.png"},
+  "6115":{kw:"open",zh:"开着的",i12:null,i18:null,i25:"6115open.png"},
+  "6116":{kw:"walk",zh:"行走",i12:null,i18:null,i25:"6116walk.png"},
+  "6117":{kw:"mine",zh:"我的",i12:null,i18:null,i25:"6117mine.png"},
+  "6118":{kw:"yours",zh:"你（们）的",i12:null,i18:null,i25:"6118yours.png"},
+  "6119":{kw:"his",zh:"他的",i12:null,i18:null,i25:"6119his.png"},
+  "6120":{kw:"hers",zh:"她的",i12:null,i18:null,i25:"6120hers.png"},
+  "6121":{kw:"theirs",zh:"他们的；她们的；它们的",i12:null,i18:"6121theirs.png",i25:null},
+  "6122":{kw:"ours",zh:"我们的",i12:null,i18:null,i25:"6122ours.png"},
+  "6123":{kw:"climbing",zh:"（正在）攀登；攀爬",i12:null,i18:"6123climbing.png",i25:null},
+  "6124":{kw:"eating",zh:"（正在）吃",i12:null,i18:"6124eating.png",i25:null},
+  "6125":{kw:"playing",zh:"（正在）玩耍",i12:null,i18:"6125playing.png",i25:null},
+  "6126":{kw:"jumping",zh:"（正在）跳",i12:null,i18:"6126jumping.png",i25:null},
+  "6127":{kw:"drinking",zh:"（正在）喝（水）",i12:null,i18:"6127drinking.png",i25:null},
+  "6128":{kw:"sleeping",zh:"（正在）睡觉",i12:null,i18:"6128sleeping.png",i25:null},
+  "6129":{kw:"each",zh:"每一；各个",i12:null,i18:null,i25:"6129each.png"},
+  "6130":{kw:"each other",zh:"相互",i12:"6130eachother.png",i18:null,i25:null},
+  "6131":{kw:"excited",zh:"兴奋的；激动的",i12:null,i18:"6131excited.png",i25:null},
+  "6132":{kw:"like",zh:"像…那样",i12:null,i18:null,i25:"6132like.png"},
+  "6133":{kw:"doing morning exercises",zh:"（正在）做早操",i12:"6133doingmorningexercises.png",i18:null,i25:null},
+  "6134":{kw:"having...class",zh:"（正在）上…课",i12:"6134havingclass.png",i18:null,i25:null},
+  "6135":{kw:"eating lunch",zh:"（正在）吃午饭",i12:"6135eatinglunch.png",i18:null,i25:null},
+  "6136":{kw:"reading a book",zh:"（正在）看书",i12:"6136readingabook.png",i18:null,i25:null},
+  "6137":{kw:"listening to music",zh:"（正在）听音乐",i12:"6137listeningtomusic.png",i18:null,i25:null},
+  "6138":{kw:"keep",zh:"保持某种状态",i12:null,i18:null,i25:"6138keep.png"},
+  "6139":{kw:"keep to the right",zh:"靠右",i12:"6139keeptotheright.png",i18:null,i25:null},
+  "6140":{kw:"keep your desk clean",zh:"保持你的课桌干净",i12:"6140keepyourdeskclean.png",i18:null,i25:null},
+  "6141":{kw:"talk quietly",zh:"小声讲话",i12:"6141talkquietly.png",i18:null,i25:null},
+  "6142":{kw:"turn",zh:"顺序",i12:null,i18:null,i25:"6142turn.png"},
+  "6143":{kw:"take turns",zh:"按顺序来",i12:"6143taketurns.png",i18:null,i25:null},
+  "6144":{kw:"bamboo",zh:"竹子",i12:null,i18:"6144bamboo.png",i25:null},
+  "6145":{kw:"its",zh:"它的；他的；她的",i12:null,i18:null,i25:"6145its.png"},
+  "6146":{kw:"show",zh:"给人看",i12:null,i18:null,i25:"6146show.png"},
+  "6147":{kw:"anything",zh:"任何事物",i12:null,i18:"6147anything.png",i25:null},
+  "6148":{kw:"else",zh:"另外；其他",i12:null,i18:null,i25:"6148else.png"},
+  "6149":{kw:"exhibition",zh:"展览",i12:"6149exhibition.png",i18:null,i25:null},
+  "6150":{kw:"say",zh:"说；讲",i12:null,i18:null,i25:"6150say.png"},
+  "6151":{kw:"have a look",zh:"看一看",i12:"6151havealook.png",i18:null,i25:null},
+  "6152":{kw:"sushi",zh:"寿司",i12:null,i18:null,i25:"6152sushi.png"},
+  "6153":{kw:"teach",zh:"教",i12:null,i18:null,i25:"6153teach.png"},
+  "6154":{kw:"sure",zh:"（表示同意）当然",i12:null,i18:null,i25:"6154sure.png"},
+  "6155":{kw:"Canadian",zh:"加拿大的",i12:null,i18:"6155Canadian.png",i25:null},
+  "6156":{kw:"Spanish",zh:"西班牙的",i12:null,i18:"6156Spanish.png",i25:null},
+  "7001":{kw:"science",zh:"科学",i12:null,i18:"7001science.png",i25:null},
+  "7002":{kw:"museum",zh:"博物馆",i12:null,i18:"7002museum.png",i25:null},
+  "7003":{kw:"post office",zh:"邮局",i12:"7003postoffice.png",i18:null,i25:null},
+  "7004":{kw:"bookstore",zh:"书店",i12:"7004bookstore.png",i18:null,i25:null},
+  "7005":{kw:"cinema",zh:"电影院",i12:null,i18:"7005cinema.png",i25:null},
+  "7006":{kw:"hospital",zh:"医院",i12:null,i18:"7006hospital.png",i25:null},
+  "7007":{kw:"crossing",zh:"十字路口",i12:null,i18:"7007crossing.png",i25:null},
+  "7008":{kw:"turn",zh:"转弯",i12:null,i18:null,i25:"7008turn.png"},
+  "7009":{kw:"left",zh:"左",i12:null,i18:null,i25:"7009left.png"},
+  "7010":{kw:"straight",zh:"笔直地",i12:null,i18:"7010straight.png",i25:null},
+  "7011":{kw:"right",zh:"右",i12:null,i18:null,i25:"7011right.png"},
+  "7012":{kw:"ask",zh:"问",i12:null,i18:null,i25:"7012ask.png"},
+  "7013":{kw:"sir",zh:"先生",i12:null,i18:null,i25:"7013sir.png"},
+  "7014":{kw:"interesting",zh:"有趣的",i12:"7014interesting.png",i18:null,i25:null},
+  "7015":{kw:"Italian",zh:"意大利的",i12:null,i18:"7015Italian.png",i25:null},
+  "7016":{kw:"restaurant",zh:"餐馆",i12:"7016restaurant.png",i18:null,i25:null},
+  "7017":{kw:"pizza",zh:"比萨饼",i12:null,i18:null,i25:"7017pizza.png"},
+  "7018":{kw:"street",zh:"大街；街道",i12:null,i18:"7018street.png",i25:null},
+  "7019":{kw:"get",zh:"到达",i12:null,i18:null,i25:"7019get.png"},
+  "7020":{kw:"BDS",zh:"北斗卫星导航系统",i12:null,i18:null,i25:"7020BDS.png"},
+  "7021":{kw:"gave",zh:"提供；交给",i12:null,i18:null,i25:"7021gave.png"},
+  "7022":{kw:"feature",zh:"特点",i12:null,i18:"7022feature.png",i25:null},
+  "7023":{kw:"follow",zh:"跟着",i12:null,i18:"7023follow.png",i25:null},
+  "7024":{kw:"far",zh:"远的",i12:null,i18:null,i25:"7024far.png"},
+  "7025":{kw:"tell",zh:"告诉",i12:null,i18:null,i25:"7025tell.png"},
+  "7026":{kw:"on foot",zh:"步行",i12:"7026onfoot.png",i18:null,i25:null},
+  "7027":{kw:"by",zh:"（表示方式）乘",i12:null,i18:null,i25:"7027by.png"},
+  "8001":{kw:"younger",zh:"更年轻的",i12:null,i18:"8001younger.png",i25:null},
+  "8002":{kw:"older",zh:"更年长的",i12:null,i18:null,i25:"8002older.png"},
+  "8003":{kw:"taller",zh:"更高的",i12:null,i18:"8003taller.png",i25:null},
+  "8004":{kw:"shorter",zh:"更矮的；更短的",i12:null,i18:"8004shorter.png",i25:null},
+  "8005":{kw:"longer",zh:"更长的",i12:null,i18:"8005longer.png",i25:null},
+  "8006":{kw:"thinner",zh:"更瘦的",i12:null,i18:"8006thinner.png",i25:null},
+  "8007":{kw:"heavier",zh:"更重的",i12:null,i18:"8007heavier.png",i25:null},
+  "8008":{kw:"bigger",zh:"更大的",i12:null,i18:"8008bigger.png",i25:null},
+  "8009":{kw:"smaller",zh:"更小的",i12:null,i18:"8009smaller.png",i25:null},
+  "8010":{kw:"stronger",zh:"更强壮的",i12:null,i18:"8010stronger.png",i25:null},
+  "8011":{kw:"dinosaur",zh:"恐龙",i12:null,i18:"8011dinosaur.png",i25:null},
+  "8012":{kw:"hall",zh:"大厅",i12:null,i18:null,i25:"8012hall.png"},
+  "8013":{kw:"metre",zh:"米",i12:null,i18:null,i25:"8013metre.png"},
+  "8014":{kw:"than",zh:"比",i12:null,i18:null,i25:"8014than.png"},
+  "8015":{kw:"both",zh:"两个都",i12:null,i18:null,i25:"8015both.png"},
+  "8016":{kw:"kilogram",zh:"千克；公斤",i12:null,i18:"8016kilogram.png",i25:null},
+  "8017":{kw:"countryside",zh:"乡村",i12:"8017countryside.png",i18:null,i25:null},
+  "8018":{kw:"lower",zh:"更低",i12:null,i18:null,i25:"8018lower.png"},
+  "8019":{kw:"shadow",zh:"阴影；影子",i12:null,i18:"8019shadow.png",i25:null},
+  "8020":{kw:"smarter",zh:"更聪明的",i12:null,i18:"8020smarter.png",i25:null},
+  "8021":{kw:"become",zh:"开始变得；变成",i12:null,i18:"8021become.png",i25:null},
+  "8022":{kw:"cleaned",zh:"打扫",i12:null,i18:"8022cleaned.png",i25:null},
+  "8023":{kw:"stayed",zh:"停留；待",i12:null,i18:"8023stayed.png",i25:null},
+  "8024":{kw:"washed",zh:"洗",i12:null,i18:"8024washed.png",i25:null},
+  "8025":{kw:"watched",zh:"看",i12:null,i18:"8025watched.png",i25:null},
+  "8026":{kw:"had",zh:"患病；得病",i12:null,i18:null,i25:"8026had.png"},
+  "8027":{kw:"had a cold",zh:"感冒",i12:"8027hadacold.png",i18:null,i25:null},
+  "8028":{kw:"slept",zh:"睡觉",i12:null,i18:null,i25:"8028slept.png"},
+  "8029":{kw:"read",zh:"读",i12:null,i18:null,i25:"8029read.png"},
+  "8030":{kw:"saw",zh:"看见",i12:null,i18:null,i25:"8030saw.png"},
+  "8031":{kw:"last",zh:"最近的；上一个的",i12:null,i18:null,i25:"8031last.png"},
+  "8032":{kw:"yesterday",zh:"昨天",i12:"8032yesterday.png",i18:null,i25:null},
+  "8033":{kw:"before",zh:"在...之前",i12:null,i18:"8033before.png",i25:null},
+  "8034":{kw:"drank",zh:"喝",i12:null,i18:null,i25:"8034drank.png"},
+  "8035":{kw:"show",zh:"演出",i12:null,i18:null,i25:"8035show.png"},
+  "8036":{kw:"magazine",zh:"杂志",i12:null,i18:"8036magazine.png",i25:null},
+  "8037":{kw:"better",zh:"更好的",i12:null,i18:"8037better.png",i25:null},
+  "8038":{kw:"faster",zh:"更快的",i12:null,i18:"8038faster.png",i25:null},
+  "8039":{kw:"hotel",zh:"旅馆",i12:null,i18:null,i25:"8039hotel.png"},
+  "8040":{kw:"fixed",zh:"修理",i12:null,i18:null,i25:"8040fixed.png"},
+  "8041":{kw:"broken",zh:"破损的",i12:null,i18:"8041broken.png",i25:null},
+  "8042":{kw:"lamp",zh:"台灯",i12:null,i18:null,i25:"8042lamp.png"},
+  "8043":{kw:"loud",zh:"喧闹的；大声的",i12:null,i18:null,i25:"8043loud.png"},
+  "8044":{kw:"enjoy",zh:"享受...乐趣；喜爱",i12:null,i18:null,i25:"8044enjoy.png"},
+  "8045":{kw:"stay",zh:"暂住；逗留",i12:null,i18:null,i25:"8045stay.png"},
+  "8046":{kw:"went",zh:"去",i12:null,i18:null,i25:"8046went.png"},
+  "8047":{kw:"camp",zh:"野营",i12:null,i18:null,i25:"8047camp.png"},
+  "8048":{kw:"went camping",zh:"（尤指在假日）野营",i12:"8048wentcamping.png",i18:null,i25:null},
+  "8049":{kw:"fish",zh:"钓鱼；捕鱼",i12:null,i18:null,i25:"8049fish.png"},
+  "8050":{kw:"went fishing",zh:"去钓鱼",i12:"8050wentfishing.png",i18:null,i25:null},
+  "8051":{kw:"rode",zh:"骑（马；自行车）",i12:null,i18:null,i25:"8051rode.png"},
+  "8052":{kw:"hurt",zh:"（使）受伤",i12:null,i18:null,i25:"8052hurt.png"},
+  "8053":{kw:"ate",zh:"吃",i12:null,i18:null,i25:"8053ate.png"},
+  "8054":{kw:"took",zh:"拍照",i12:null,i18:null,i25:"8054took.png"},
+  "8055":{kw:"took pictures",zh:"照相",i12:"8055tookpictures.png",i18:null,i25:null},
+  "8056":{kw:"bought",zh:"买",i12:null,i18:"8056bought.png",i25:null},
+  "8057":{kw:"gift",zh:"礼物",i12:null,i18:null,i25:"8057gift.png"},
+  "8058":{kw:"fell",zh:"摔倒",i12:null,i18:null,i25:"8058fell.png"},
+  "8059":{kw:"off",zh:"从（某处）落下",i12:null,i18:null,i25:"8059off.png"},
+  "8060":{kw:"mule",zh:"骡子",i12:null,i18:null,i25:"8060mule.png"},
+  "8061":{kw:"Turpan",zh:"吐鲁番",i12:null,i18:"8061Turpan.png",i25:null},
+  "8062":{kw:"could",zh:"能",i12:null,i18:null,i25:"8062could.png"},
+  "8063":{kw:"till",zh:"直到",i12:null,i18:null,i25:"8063till.png"},
+  "8064":{kw:"beach",zh:"海滩；沙滩",i12:null,i18:null,i25:"8064beach.png"},
+  "8065":{kw:"basket",zh:"篮；筐",i12:null,i18:"8065basket.png",i25:null},
+  "8066":{kw:"part",zh:"角色",i12:null,i18:null,i25:"8066part.png"},
+  "8067":{kw:"licked",zh:"舔",i12:null,i18:"8067licked.png",i25:null},
+  "8068":{kw:"laughed",zh:"笑",i12:null,i18:"8068laughed.png",i25:null},
+  "8069":{kw:"dining hall",zh:"饭厅",i12:"8069dininghall.png",i18:null,i25:null},
+  "8070":{kw:"grass",zh:"草坪",i12:null,i18:null,i25:"8070grass.png"},
+  "8071":{kw:"gym",zh:"体育馆",i12:null,i18:null,i25:"8071gym.png"},
+  "8072":{kw:"ago",zh:"以前",i12:null,i18:null,i25:"8072ago.png"},
+  "8073":{kw:"cycling",zh:"骑自行车运动（或活动）",i12:null,i18:"8073cycling.png",i25:null},
+  "8074":{kw:"go cycling",zh:"去骑自行车",i12:"8074gocycling.png",i18:null,i25:null},
+  "8075":{kw:"ice-skate",zh:"滑冰",i12:"8075iceskate.png",i18:null,i25:null},
+  "8076":{kw:"badminton",zh:"羽毛球运动",i12:"8076badminton.png",i18:null,i25:null},
+  "8077":{kw:"star",zh:"星",i12:null,i18:null,i25:"8077star.png"},
+  "8078":{kw:"easy",zh:"容易的",i12:null,i18:null,i25:"8078easy.png"},
+  "8079":{kw:"look up",zh:"（在词典中或通过电脑）查阅",i12:"8079lookup.png",i18:null,i25:null},
+  "8080":{kw:"Internet",zh:"互联网",i12:null,i18:"8080Internet.png",i25:null},
+  "8081":{kw:"different",zh:"不同的",i12:"8081different.png",i18:null,i25:null},
+  "8082":{kw:"active",zh:"积极的；活跃的",i12:null,i18:"8082active.png",i25:null},
+  "8083":{kw:"race",zh:"赛跑",i12:null,i18:null,i25:"8083race.png"},
+  "8084":{kw:"nothing",zh:"没有什么",i12:null,i18:"8084nothing.png",i25:null},
+  "8085":{kw:"thought",zh:"想",i12:null,i18:"8085thought.png",i25:null},
+  "8086":{kw:"felt",zh:"感觉",i12:null,i18:null,i25:"8086felt.png"},
+  "8087":{kw:"cheetah",zh:"猎豹",i12:null,i18:"8087cheetah.png",i25:null},
+  "8088":{kw:"trip",zh:"绊倒",i12:null,i18:null,i25:"8088trip.png"},
+  "8089":{kw:"woke",zh:"醒",i12:null,i18:null,i25:"8089woke.png"},
+  "8090":{kw:"dream",zh:"梦",i12:null,i18:null,i25:"8090dream.png"},
+};
+const sb = createClient("https://ptxkeywyujftzusjvrrh.supabase.co","eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB0eGtleXd5dWpmdHp1c2p2cnJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzg1NTY3NTEsImV4cCI6MjA5NDEzMjc1MX0.Y5AUQR4emWXbBcW_NB_yGb2FrrjBgIA5DK-rcyaISqg");
+async function fetchAllRows(buildQuery){
+  const pageSize=1000;let from=0,all=[];
+  while(true){
+    const{data,error}=await buildQuery().range(from,from+pageSize-1);
+    if(error)throw error;
+    if(!data||!data.length)break;
+    all=all.concat(data);
+    if(data.length<pageSize)break;
+    from+=pageSize;
+  }
+  return all;
+}
+const CLD_NAME="deretv9xp",CLD_PRESET="picreview";
+async function cldUpload(file){
+  const fd=new FormData();fd.append("file",file);fd.append("upload_preset",CLD_PRESET);
+  const r=await fetch("https://api.cloudinary.com/v1_1/"+CLD_NAME+"/image/upload",{method:"POST",body:fd});
+  if(!r.ok){const t=await r.text();throw new Error("Cloudinary "+r.status+": "+t);}
+  return await r.json();
+}
+function cldVariant(url,t){if(!url||url.indexOf("res.cloudinary.com")===-1)return url;return url.replace("/upload/","/upload/"+t+"/");}
+function imgThumb(url){return cldVariant(url,"w_300,h_300,c_fill,q_auto,f_auto");}
+function imgMid(url){return cldVariant(url,"w_1280,q_auto,f_auto");}
+let selectModeOn=!1,selectedIds=new Set();
+function refreshBatchBar(){
+  const iv=document.getElementById("imagesView"),bar=document.getElementById("batchBar");
+  if(iv.style.display==="block"){
+    bar.classList.add("visible");
+    document.getElementById("btnBatchDelete").style.display=currentRole==="uploader"?"inline-block":"none";
+  }else{
+    bar.classList.remove("visible");
+    selectedIds.clear();selectModeOn=!1;
+    const sm=document.getElementById("chkSelectMode");if(sm)sm.checked=!1;
+    const sa=document.getElementById("chkSelectAll");if(sa)sa.checked=!1;
+  }
+  updateBatchCount();
+}
+function updateBatchCount(){const el=document.getElementById("batchCount");if(el)el.textContent="已选 "+selectedIds.size+" 张";}
+
+// 登录
+const loginMask=document.getElementById("loginMask"),nameInput=document.getElementById("nameInput"),enterBtn=document.getElementById("enterBtn"),roleLabel=document.getElementById("roleLabel"),logoutBtn=document.getElementById("logoutBtn");
+let currentUser=localStorage.getItem("reviewUser")||"",currentRole=localStorage.getItem("reviewRole")||"",selectedRole="";
+document.querySelectorAll(".role-card").forEach(c=>{c.addEventListener("click",()=>{document.querySelectorAll(".role-card").forEach(x=>x.classList.remove("selected"));c.classList.add("selected");selectedRole=c.dataset.role;});});
+function applyLogin(){
+  if(!currentUser||!currentRole)return;
+  loginMask.style.display="none";
+  const badge=currentRole==="uploader"?'<span class="role-badge-uploader">上传</span>':'<span class="role-badge-reviewer">审核</span>';
+  roleLabel.innerHTML=currentUser+badge;
+  document.getElementById("uploadArea").style.display=currentRole==="uploader"?"block":"none";
+  document.getElementById("reviewerSection").style.display=currentRole==="reviewer"?"block":"none";
+  document.getElementById("btnApprove").style.display=currentRole==="reviewer"?"inline-block":"none";
+  document.getElementById("btnReject").style.display=currentRole==="reviewer"?"inline-block":"none";
+  document.getElementById("btnDelete").style.display=currentRole==="uploader"?"inline-block":"none";
+  refreshBatchBar();
+  if("Notification" in window&&Notification.permission==="default")Notification.requestPermission();
+  subscribeNotifications();
+  checkMissedNotifications();
+}
+enterBtn.addEventListener("click",()=>{const n=nameInput.value.trim();if(!n){nameInput.style.border="2px solid red";return;}if(!selectedRole){document.querySelectorAll(".role-card").forEach(c=>c.style.border="2px solid red");return;}currentUser=n;currentRole=selectedRole;localStorage.setItem("reviewUser",n);localStorage.setItem("reviewRole",selectedRole);applyLogin();});
+nameInput.addEventListener("keydown",e=>{if(e.key==="Enter")enterBtn.click();});
+logoutBtn.addEventListener("click",()=>{localStorage.removeItem("reviewUser");localStorage.removeItem("reviewRole");currentUser="";currentRole="";selectedRole="";document.querySelectorAll(".role-card").forEach(c=>c.classList.remove("selected"));loginMask.style.display="flex";nameInput.value="";});
+applyLogin();
+
+// 项目
+let currentProjectId=null,currentProjectName="";
+const projectsView=document.getElementById("projectsView"),imagesView=document.getElementById("imagesView"),projectsGrid=document.getElementById("projectsGrid"),projectTitle=document.getElementById("projectTitle"),headerTitle=document.getElementById("headerTitle");
+
+let _projFilter="all";
+document.querySelectorAll(".proj-filter-bar button").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    _projFilter=btn.dataset.pf;
+    document.querySelectorAll(".proj-filter-bar button").forEach(b=>b.classList.toggle("active",b===btn));
+    _applyProjFilter();
+  });
+});
+function _applyProjFilter(){
+  document.querySelectorAll("#projectsGrid .folder-card").forEach(card=>{
+    const done=card.dataset.completed==="1";
+    if(_projFilter==="active")card.style.display=done?"none":"";
+    else if(_projFilter==="completed")card.style.display=done?"":"none";
+    else card.style.display="";
+  });
+}
+
+async function loadProjects(){
+  try{
+    const{data:projects,error:pe}=await sb.from("projects").select("*").order("created_at",{ascending:false});
+    if(pe)throw pe;
+    const counts={};const pending={};
+    const imgs=await fetchAllRows(()=>sb.from("images").select("id,project_id,status"));
+    (imgs||[]).forEach(img=>{
+      const k=img.project_id||"__uncat__";
+      counts[k]=(counts[k]||0)+1;
+      if(img.status==="pending")pending[k]=(pending[k]||0)+1;
+    });
+    projectsGrid.innerHTML="";
+    const ucTotal=counts["__uncat__"]||0;const ucPending=pending["__uncat__"]||0;
+    if(ucTotal>0){const card=makeProjectCard("__uncat__","未分类",ucTotal,ucPending,"系统","",false);projectsGrid.appendChild(card);}
+    (projects||[]).forEach(p=>{
+      const total=counts[p.id]||0;const pend=pending[p.id]||0;
+      const done=!!(p.metadata&&p.metadata.completed);
+      projectsGrid.appendChild(makeProjectCard(p.id,p.name,total,pend,p.created_by,p.created_at,done));
+    });
+    _applyProjFilter();
+  }catch(err){
+    projectsGrid.innerHTML='<p style="color:red;padding:20px">加载失败：'+err.message+'</p>';
+    console.error("loadProjects error",err);
+  }
+}
+
+function makeProjectCard(id,name,total,pend,createdBy,createdAt,completed){
+  const card=document.createElement("div");
+  card.className="folder-card"+(completed?" completed":"");
+  card.dataset.completed=completed?"1":"0";
+  const dateStr=createdAt?fmt(createdAt):"";
+  card.innerHTML=(completed?'<div class="completed-badge">✓ 完结</div>':'')+'<div class="folder-icon">📁</div><div class="folder-name">'+name+'</div><div class="folder-stats"><span class="badge badge-pending">待审 '+pend+'</span><span class="badge" style="background:#e9ecef;color:#555">共 '+total+' 张</span></div><div class="folder-meta">'+(createdBy||"")+(dateStr?" · "+dateStr:"")+'</div>';
+  card.addEventListener("click",()=>openProject(id,name));
+  return card;
+}
+
+document.getElementById("btnNewFolder").addEventListener("click",async()=>{
+  if(!currentUser){alert("请先在最上面点「切换」登录");return;}
+  const name=prompt("项目名称：");
+  if(!name||!name.trim())return;
+  await sb.from("projects").insert({name:name.trim(),created_by:currentUser,created_at:new Date().toISOString()});
+  loadProjects();
+});
+
+headerTitle.addEventListener("click",()=>{if(currentProjectId!==null)goBack();});
+
+let currentProjectMeta=null;
+async function loadProjectMeta(id){
+  currentProjectMeta=null;
+  if(!id||id==="__uncat__")return;
+  const{data}=await sb.from("projects").select("metadata").eq("id",id).maybeSingle();
+  currentProjectMeta=(data&&data.metadata)||{};
+  document.getElementById("btnClearTable").style.display=currentProjectMeta&&currentProjectMeta.table?"":"none";
+  _updateCompleteBtn();
+}
+function _updateCompleteBtn(){
+  const btn=document.getElementById("btnComplete");
+  if(!btn)return;
+  if(!currentProjectId||currentProjectId==="__uncat__"||currentRole!=="reviewer"){btn.style.display="none";return;}
+  btn.style.display="";
+  const done=!!(currentProjectMeta&&currentProjectMeta.completed);
+  btn.textContent=done?"↩ 取消完结":"✓ 标记完结";
+  btn.classList.toggle("is-completed",done);
+}
+const _btnComplete=document.getElementById("btnComplete");
+if(_btnComplete)_btnComplete.addEventListener("click",async()=>{
+  if(!currentProjectId||currentProjectId==="__uncat__")return;
+  const done=!!(currentProjectMeta&&currentProjectMeta.completed);
+  const msg=done?"确定取消完结状态？":"确定将此项目标记为已完结？";
+  if(!confirm(msg))return;
+  const meta={...(currentProjectMeta||{}),completed:!done};
+  const{error}=await sb.from("projects").update({metadata:meta}).eq("id",currentProjectId);
+  if(error){showCopyToast("操作失败："+error.message);return;}
+  currentProjectMeta=meta;
+  _updateCompleteBtn();
+  showCopyToast(done?"已取消完结":"已标记为完结 ✓");
+});
+function parseCsv(text){
+  const rows=[];let row=[],cell="",inQ=false;
+  for(let i=0;i<text.length;i++){
+    const c=text[i];
+    if(inQ){
+      if(c==='"'&&text[i+1]==='"'){cell+='"';i++;}
+      else if(c==='"')inQ=false;
+      else cell+=c;
+    }else{
+      if(c==='"')inQ=true;
+      else if(c===','){row.push(cell);cell="";}
+      else if(c==='\n'){row.push(cell);rows.push(row);row=[];cell="";}
+      else if(c!=='\r')cell+=c;
+    }
+  }
+  if(cell.length||row.length){row.push(cell);rows.push(row);}
+  return rows;
+}
+// ---- 导入表格弹窗 ----
+let _impWb=null,_impAllSheets={};
+
+function _impEmptyRatio(rows,colIdx){
+  let empty=0;
+  const body=rows.slice(1);
+  body.forEach(r=>{if(!(r[colIdx]||"").trim())empty++;});
+  return body.length?empty/body.length:1;
+}
+
+function _impResolveCell(cell){
+  if(cell==null)return"";
+  // 有缓存值直接用
+  if(cell.v!=null&&cell.v!=="")return String(cell.v);
+  // 跨 Sheet 公式引用：='SheetName'!B2 或 =SheetName!B2
+  if(cell.f){
+    const m=cell.f.match(/^='?([^'!\r\n]+)'?!([A-Z]+\d+)$/i);
+    if(m&&_impWb){
+      const refWs=_impWb.Sheets[m[1]];
+      if(refWs){const rc=refWs[m[2]];if(rc&&rc.v!=null)return String(rc.v);}
+    }
+  }
+  return"";
+}
+
+function _impSheetRows(sheetName){
+  if(!_impWb)return[];
+  const ws=_impWb.Sheets[sheetName];
+  if(!ws)return[];
+  const ref=ws["!ref"];
+  if(!ref)return[];
+  const range=XLSX.utils.decode_range(ref);
+  const rows=[];
+  for(let R=range.s.r;R<=range.e.r;R++){
+    const row=[];
+    for(let C=range.s.c;C<=range.e.c;C++){
+      const addr=XLSX.utils.encode_cell({r:R,c:C});
+      row.push(_impResolveCell(ws[addr]||null));
+    }
+    rows.push(row);
+  }
+  return rows;
+}
+
+function _impBuildUI(){
+  const sheetSel=document.getElementById("impSheetSelect");
+  const allNames=_impWb.SheetNames;
+  const names=allNames.filter(n=>!n.startsWith("【废弃】")&&!n.startsWith("#"));
+  sheetSel.innerHTML=names.map(n=>`<option value="${n}">${n}</option>`).join("");
+  const preferred=names.find(n=>/批量|生图|数据|清单/i.test(n));
+  if(preferred)sheetSel.value=preferred;
+  _impUpdateCols();
+  sheetSel.onchange=_impUpdateCols;
+  // 「补充列」Sheet 下拉
+  const extraSheet=document.getElementById("impExtraSheet");
+  extraSheet.innerHTML=allNames.map(n=>`<option value="${n}">${n}</option>`).join("");
+  // 默认选主 Sheet 的前一个
+  const mainIdx=allNames.indexOf(sheetSel.value);
+  if(mainIdx>0)extraSheet.value=allNames[mainIdx-1];
+  extraSheet.onchange=_impUpdateExtraCols;
+  _impUpdateExtraCols();
+  const chk=document.getElementById("impExtraEnabled");
+  chk.onchange=()=>{document.getElementById("impExtraOptions").style.display=chk.checked?"block":"none";};
+}
+
+function _impUpdateExtraCols(){
+  const sn=document.getElementById("impExtraSheet").value;
+  const rows=_impSheetRows(sn);
+  if(!rows.length)return;
+  const header=rows[0].map((c,i)=>(c||"").trim()||(i===0?"(第1列)":"列"+(i+1)));
+  const sel=document.getElementById("impExtraCol");
+  sel.innerHTML=header.map((h,i)=>`<option value="${i}">${h}</option>`).join("");
+}
+
+function _impUpdateCols(){
+  const sheetName=document.getElementById("impSheetSelect").value;
+  const rows=_impSheetRows(sheetName).filter(r=>r.some(c=>(c||"").trim()));
+  if(!rows.length)return;
+  const header=rows[0].map((c,i)=>(c||"").trim()||(i===0?"(第1列)":"列"+(i+1)));
+  const maxCols=Math.max(...rows.map(r=>r.length));
+
+  // 计算每列空值比例
+  const empties=header.map((_,i)=>_impEmptyRatio(rows,i));
+
+  // ID列选择：优先找名含 输出文件名/序号/ID/编号/key 的非空列
+  const keySel=document.getElementById("impKeySelect");
+  keySel.innerHTML=header.map((h,i)=>`<option value="${i}" ${empties[i]>0.8?"style='opacity:.4'":""}>${h}${empties[i]>0.8?" (多空)":""}</option>`).join("");
+  const autoKey=header.findIndex(h=>/输出文件名|序号|编号|^id$|^key$/i.test(h));
+  keySel.value=autoKey>=0?autoKey:0;
+  keySel.onchange=_impRefreshPreview;
+
+  // 显示列：排除空列和ID列
+  const list=document.getElementById("impColList");
+  list.innerHTML=header.map((h,i)=>`
+    <label class="import-col-item${empties[i]>0.8?' empty-col':''}">
+      <input type="checkbox" data-col="${i}" ${i!==+keySel.value&&empties[i]<=0.8?"checked":""} />
+      ${h}${empties[i]>0.8?" 🚫":""}
+    </label>`).join("");
+  list.querySelectorAll("input").forEach(cb=>{
+    cb.addEventListener("change",_impRefreshPreview);
+  });
+  keySel.onchange=()=>{
+    // 取消勾选新 key 列，勾选原 key 列
+    list.querySelectorAll("input").forEach(cb=>{
+      const ci=+cb.dataset.col;
+      if(ci===+keySel.value)cb.checked=false;
+    });
+    _impRefreshPreview();
+  };
+  _impRefreshPreview();
+}
+
+function _impRefreshPreview(){
+  const sheetName=document.getElementById("impSheetSelect").value;
+  const rows=_impSheetRows(sheetName).filter(r=>r.some(c=>(c||"").trim()));
+  const keyCol=+document.getElementById("impKeySelect").value;
+  const selCols=[...document.querySelectorAll("#impColList input:checked")].map(cb=>+cb.dataset.col);
+  const header=rows[0]||[];
+  const preview=document.getElementById("impPreview");
+  const samples=rows.slice(1,4).map(r=>{
+    const key=(r[keyCol]||"").trim();
+    const vals=selCols.map(i=>(r[i]||"").trim().slice(0,20)).join(" · ");
+    return `<strong>${key}</strong> → ${vals}`;
+  });
+  const total=rows.slice(1).filter(r=>(r[keyCol]||"").trim()).length;
+  preview.innerHTML=`共 ${total} 行 · ID列：${header[keyCol]||"col"+keyCol}<br>${samples.join("<br>")}`;
+}
+
+async function openImportModal(file){
+  if(!currentProjectId||currentProjectId==="__uncat__"){showCopyToast("未分类项目不支持导入表格");return;}
+  const name=(file.name||"").toLowerCase();
+  if(name.endsWith(".xlsx")||name.endsWith(".xls")){
+    if(typeof XLSX==="undefined"){showCopyToast("xlsx 解析库未加载，请检查网络");return;}
+    const buf=await file.arrayBuffer();
+    _impWb=XLSX.read(buf,{type:"array",cellFormula:true,cellNF:false,cellDates:true});
+    _impBuildUI();
+    document.getElementById("importModal").classList.add("open");
+  }else{
+    // CSV 直接用旧逻辑
+    const text=await file.text();
+    const rawRows=parseCsv(text);
+    _doImport(rawRows,0,[...Array(Math.max(...rawRows.map(r=>r.length))-1).keys()].map(i=>i+1));
+  }
+}
+
+async function _doImportFromModal(){
+  const sheetName=document.getElementById("impSheetSelect").value;
+  const rows=_impSheetRows(sheetName).filter(r=>r.some(c=>(c||"").trim()));
+  const keyCol=+document.getElementById("impKeySelect").value;
+  const selCols=[...document.querySelectorAll("#impColList input:checked")].map(cb=>+cb.dataset.col);
+  const header=rows[0]||[];
+  const hasHeader=header.some(h=>/序号|关键词|造句|中文|输出文件名|单词|key|sentence|id|word|名|号/i.test(h));
+  const start=hasHeader?1:0;
+  const columns=selCols.map(i=>(header[i]||"列"+(i+1)));
+  // 检查是否启用「补充列」
+  const extraEnabled=document.getElementById("impExtraEnabled").checked;
+  let extraRows=null,extraColIdx=0,extraLabel="";
+  if(extraEnabled){
+    const extraSn=document.getElementById("impExtraSheet").value;
+    extraColIdx=+document.getElementById("impExtraCol").value;
+    extraLabel=document.getElementById("impExtraLabel").value.trim()||("补充列");
+    const rawExtra=_impSheetRows(extraSn).filter(r=>r.some(c=>(c||"").trim()));
+    // 对齐：从 start 行开始，按行号对应主 sheet
+    extraRows=rawExtra;
+    columns.push(extraLabel);
+  }
+  const data={};
+  for(let i=start;i<rows.length;i++){
+    const r=rows[i].map(c=>(c||"").trim());
+    const k=r[keyCol];if(!k)continue;
+    const vals=selCols.map(ci=>r[ci]||"");
+    if(extraRows){
+      // 行号对齐：主 sheet 第 i 行对应 extra 第 i 行（含 header 偏移）
+      const eRow=extraRows[i]||[];
+      vals.push((eRow[extraColIdx]||"").trim());
+    }
+    data[k]=vals;
+  }
+  const count=Object.keys(data).length;
+  if(!count){showCopyToast("没有解析到有效行");return;}
+  const meta={...(currentProjectMeta||{}),table:{columns,rows:data},table_uploaded_by:currentUser,table_uploaded_at:new Date().toISOString()};
+  const{error}=await sb.from("projects").update({metadata:meta}).eq("id",currentProjectId);
+  if(error){showCopyToast("保存失败："+error.message);return;}
+  currentProjectMeta=meta;
+  document.getElementById("btnClearTable").style.display="";
+  document.getElementById("importModal").classList.remove("open");
+  showCopyToast("已导入 "+count+" 行 · "+columns.length+" 列");
+  if(currentView==="table")renderTable();
+}
+
+document.getElementById("btnImportConfirm").addEventListener("click",_doImportFromModal);
+document.getElementById("btnImportCancel").addEventListener("click",()=>document.getElementById("importModal").classList.remove("open"));
+document.getElementById("btnImportTable").addEventListener("click",()=>document.getElementById("tableFileInput").click());
+document.getElementById("tableFileInput").addEventListener("change",e=>{const f=e.target.files[0];if(f)openImportModal(f);e.target.value="";});
+async function clearProjectTable(){
+  if(!currentProjectId)return;
+  if(!confirm("确定清空当前项目的导入表格？"))return;
+  const meta={...(currentProjectMeta||{})};delete meta.table;delete meta.table_uploaded_by;delete meta.table_uploaded_at;
+  await sb.from("projects").update({metadata:meta}).eq("id",currentProjectId);
+  currentProjectMeta=meta;
+  document.getElementById("btnClearTable").style.display="none";
+  showCopyToast("已清空表格");
+  if(currentView==="table")renderTable();
+}
+document.getElementById("btnClearTable").addEventListener("click",clearProjectTable);;
+
+function openProject(id,name){
+  currentProjectId=id;currentProjectName=name;
+  projectsView.style.display="none";imagesView.style.display="block";
+  projectTitle.textContent=name;headerTitle.textContent="PicReview / "+name;
+  activeFilter="all";document.querySelectorAll(".filter-bar button[data-filter]").forEach(b=>b.classList.remove("active"));document.querySelector(".filter-bar button[data-filter='all']").classList.add("active");
+  document.getElementById("imgSearch").value="";
+  refreshBatchBar();loadProjectMeta(id);loadImages();
+}
+
+function goBack(){currentProjectId=null;currentProjectName="";projectsView.style.display="block";imagesView.style.display="none";headerTitle.textContent="PicReview";refreshBatchBar();loadProjects();}
+document.getElementById("btnBack").addEventListener("click",goBack);
+
+sb.channel("proj-ch").on("postgres_changes",{event:"*",schema:"public",table:"projects"},()=>{if(currentProjectId===null)loadProjects();}).subscribe();
+document.getElementById("imgSearch").addEventListener("input",()=>renderGrid());
+document.querySelectorAll(".level-btn").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    const already=btn.classList.contains("active");
+    document.querySelectorAll(".level-btn").forEach(b=>b.classList.remove("active"));
+    if(!already)btn.classList.add("active");
+    renderGrid();
+  });
+});
+loadProjects();
+
+// 上传
+const uploadArea=document.getElementById("uploadArea"),fileInput=document.getElementById("fileInput"),progressBar=document.getElementById("progressBar"),uploadProgress=document.getElementById("uploadProgress"),uploadStatus=document.getElementById("uploadStatus");
+uploadArea.addEventListener("click",()=>fileInput.click());
+uploadArea.addEventListener("dragover",e=>{e.preventDefault();uploadArea.style.background="#dbeafe";});
+uploadArea.addEventListener("dragleave",()=>{uploadArea.style.background="";});
+uploadArea.addEventListener("drop",e=>{e.preventDefault();uploadArea.style.background="";handleFiles([...e.dataTransfer.files]);});
+fileInput.addEventListener("change",()=>handleFiles([...fileInput.files]));
+async function hashFile(file){const buf=await file.arrayBuffer();const h=await crypto.subtle.digest("SHA-256",buf);return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,"0")).join("");}
+async function handleFiles(files){
+  const imgs=files.filter(f=>f.type.startsWith("image/"));if(!imgs.length)return;
+  uploadProgress.style.display="block";
+  let done=0,skipped=0,replaced=0,inserted=0;const total=imgs.length;
+  const pid=currentProjectId==="__uncat__"?null:currentProjectId;
+  async function uploadOne(f){
+    const hash=await hashFile(f);
+    let qn=sb.from("images").select("id").eq("filename",f.name).limit(1);
+    if(pid===null)qn=qn.is("project_id",null);else qn=qn.eq("project_id",pid);
+    const{data:sameName}=await qn;
+    if(sameName&&sameName.length){
+      try{
+        const j=await cldUpload(f);
+        await sb.from("images").update({url:j.secure_url,storage_path:j.public_id,file_hash:hash,status:"pending",updated_at:new Date().toISOString(),uploader:currentUser,replaced_by:currentUser,reject_reason:"",tags:[],claimed_by:null,claimed_at:null}).eq("id",sameName[0].id);
+        replaced++;
+      }catch(err){console.error(err);}
+      done++;progressBar.style.width=(done/total*100)+"%";
+      uploadStatus.textContent="处理中 "+done+" / "+total+"（同名替换）";
+      return;
+    }
+    const{data:byHash}=await sb.from("images").select("id,filename").eq("file_hash",hash).limit(1);
+    if(byHash&&byHash.length){skipped++;done++;progressBar.style.width=(done/total*100)+"%";uploadStatus.textContent="跳过重复："+f.name;return;}
+    try{
+      const j=await cldUpload(f);
+      await sb.from("images").insert({url:j.secure_url,storage_path:j.public_id,filename:f.name,file_hash:hash,uploader:currentUser,status:"pending",tags:[],comments:[],project_id:pid,created_at:new Date().toISOString(),updated_at:new Date().toISOString()});
+      inserted++;
+    }catch(err){console.error(err);uploadStatus.textContent="上传失败："+f.name+" "+err.message;}
+    done++;progressBar.style.width=(done/total*100)+"%";uploadStatus.textContent="上传中 "+done+" / "+total;
+  }
+  for(let i=0;i<imgs.length;i+=4)await Promise.allSettled(imgs.slice(i,i+4).map(uploadOne));
+  uploadStatus.textContent="完成：新上传 "+inserted+"，同名替换 "+replaced+(skipped>0?"，跳过重复 "+skipped:"");
+  if(inserted+replaced>=3)await recordUploadNotification(inserted+replaced);
+  setTimeout(()=>{uploadProgress.style.display="none";progressBar.style.width="0";uploadStatus.textContent="";},4500);
+  fileInput.value="";
+}
+
+// 通知系统
+function showToast(html,duration=7000){
+  const c=document.getElementById("toastContainer");
+  const t=document.createElement("div");t.className="toast";
+  t.innerHTML='<span>'+html+'</span><button class="toast-close" title="关闭">×</button>';
+  t.querySelector(".toast-close").addEventListener("click",()=>t.remove());
+  c.appendChild(t);
+  if(duration>0)setTimeout(()=>t&&t.remove(),duration);
+}
+function sendBrowserNotif(title,body){
+  if("Notification" in window&&Notification.permission==="granted"&&document.hidden)
+    new Notification(title,{body});
+}
+async function recordUploadNotification(count){
+  try{
+    await sb.from("notifications").insert({uploader:currentUser,count,project_name:currentProjectName||"未分类",created_at:new Date().toISOString()});
+  }catch(e){console.warn("通知写入失败",e);}
+}
+function subscribeNotifications(){
+  sb.channel("notif-ch").on("postgres_changes",{event:"INSERT",schema:"public",table:"notifications"},payload=>{
+    const n=payload.new;
+    if(n.uploader===currentUser)return;
+    const msg='📤 <strong>'+n.uploader+'</strong> 在「'+n.project_name+'」上传了 <strong>'+n.count+'</strong> 张新图片';
+    showToast(msg);
+    sendBrowserNotif("PicReview 有新图片",n.uploader+" 在「"+n.project_name+"」上传了 "+n.count+" 张");
+  }).subscribe();
+}
+async function checkMissedNotifications(){
+  const lastVisit=localStorage.getItem("lastVisit")||new Date(0).toISOString();
+  localStorage.setItem("lastVisit",new Date().toISOString());
+  try{
+    const{data}=await sb.from("notifications").select("*").gt("created_at",lastVisit).neq("uploader",currentUser).order("created_at",{ascending:false}).limit(20);
+    if(!data||!data.length)return;
+    const total=data.reduce((s,n)=>s+n.count,0);
+    const names=[...new Set(data.map(n=>n.uploader))].join("、");
+    const folders=[...new Set(data.map(n=>n.project_name))].join("、");
+    showToast('👋 你不在时，<strong>'+names+'</strong> 在「'+folders+'」共上传了 <strong>'+total+'</strong> 张新图片',10000);
+  }catch(e){console.warn("通知查询失败",e);}
+}
+
+// 图片列表
+const grid=document.getElementById("grid"),emptyHint=document.getElementById("emptyHint"),statsBar=document.getElementById("statsBar");
+let allDocs=[],activeFilter="all",currentView="grid";
+function parseImgName(fn){
+  const base=(fn||"").replace(/\.[^.]+$/,"");
+  const parts=base.split("_");
+  const lvM=parts[0]&&parts[0].match(/L(\d+)/i);
+  const lv=lvM?parseInt(lvM[1]):99;
+  const lastPart=(parts[parts.length-1]||"").trim();
+  let scene;
+  if(lastPart==="封面"||lastPart.toLowerCase()==="cover")scene=-1;
+  else if(lastPart==="封底"||/^back.?cover$/i.test(lastPart))scene=99999;
+  else{const scM=lastPart.match(/\d+/);scene=scM?parseInt(scM[0]):0;}
+  const book=parts.length>=2?parts.slice(1,-1).join("_"):"";
+  return{lv,book,scene};
+}
+function sortImages(docs){
+  const isEng=currentProjectName&&currentProjectName.includes("英语绘本");
+  if(isEng){
+    return[...docs].sort((a,b)=>{
+      const pa=parseImgName(a.filename),pb=parseImgName(b.filename);
+      const bc=pa.book.localeCompare(pb.book,"en");
+      if(bc!==0)return bc;
+      return pa.scene-pb.scene;
+    });
+  }
+  return[...docs].sort((a,b)=>(b.filename||"").localeCompare(a.filename||""));
+}
+async function loadImages(){
+  const keepId=currentDocId;
+  const modalOpen=modal&&modal.classList.contains("open");
+  let q=()=>{
+    let b=sb.from("images").select("*");
+    if(currentProjectId==="__uncat__")b=b.is("project_id",null);
+    else b=b.eq("project_id",currentProjectId);
+    return b;
+  };
+  const data=await fetchAllRows(q);
+  allDocs=sortImages(data||[]);
+  renderGrid();
+  if(keepId&&modalOpen){
+    const item=allDocs.find(d=>d.id===keepId);
+    if(item){
+      if(currentList[currentIndex]?.id!==keepId){
+        const idx=currentList.findIndex(d=>d.id===keepId);
+        if(idx>=0)currentIndex=idx;
+      }
+      if(currentList[currentIndex])currentList[currentIndex]=item;
+      loadItem(item);
+    }
+  }
+}
+sb.channel("img-ch").on("postgres_changes",{event:"*",schema:"public",table:"images"},()=>{if(currentProjectId!==null)loadImages();else loadProjects();}).subscribe();
+function itemStatus(item){return(item.claimed_by&&item.status==="rejected")?"claimed":item.status;}
+function statusLabel(s){return{pending:"待审核",approved:"已通过",rejected:"已打回",claimed:"已认领"}[s]||s;}
+const CLAIM_COLORS=[
+  {bg:"#FF4500",fg:"#fff"},
+  {bg:"#FFD700",fg:"#fff"},
+  {bg:"#2D5D42",fg:"#fff"},
+  {bg:"#008B8B",fg:"#fff"},
+  {bg:"#800080",fg:"#fff"}
+];
+let claimColorMap={};
+function buildClaimColorMap(){
+  const first={};
+  allDocs.forEach(d=>{
+    if(!d.claimed_by)return;
+    const t=d.claimed_at||d.updated_at||"";
+    if(!first[d.claimed_by]||t<first[d.claimed_by])first[d.claimed_by]=t;
+  });
+  const names=Object.keys(first).sort((a,b)=>first[a].localeCompare(first[b])||a.localeCompare(b,"zh"));
+  claimColorMap={};
+  names.forEach((n,i)=>{claimColorMap[n]=i%CLAIM_COLORS.length;});
+}
+function applyClaimPin(el,name){
+  if(!name)return;
+  const c=CLAIM_COLORS[claimColorMap[name]??0];
+  el.style.background=c.bg;
+  el.style.color=c.fg;
+  el.innerHTML='我来改！ <em>'+name+'</em>';
+}
+function showCopyToast(msg){
+  const t=document.getElementById("copyToast");t.textContent=msg;t.style.opacity="1";
+  clearTimeout(t._timer);t._timer=setTimeout(()=>t.style.opacity="0",2000);
+}
+function copyIds(){
+  const ids=[...document.querySelectorAll("#statusTbody tr")]
+    .filter(tr=>!tr.classList.contains("book-header"))
+    .map(tr=>(tr.querySelector("td")||{}).textContent||"")
+    .map(t=>t.trim()).filter(Boolean).join(" ");
+  console.log("[copyIds] 抓到序号:",ids?ids.split(" ").length:0,"个");
+  if(!ids){showCopyToast("没有可复制的序号");return;}
+  const n=ids.split(" ").length;
+  function execFallback(){
+    try{
+      const ta=document.createElement("textarea");
+      ta.value=ids;ta.style.cssText="position:fixed;top:0;left:0;width:1em;height:1em;padding:0;border:0;opacity:0";
+      document.body.appendChild(ta);ta.focus();ta.select();ta.setSelectionRange(0,ids.length);
+      const ok=document.execCommand("copy");document.body.removeChild(ta);
+      console.log("[copyIds] execCommand 结果:",ok);
+      if(ok){showCopyToast("已复制 "+n+" 个序号");}
+      else{window.prompt("自动复制失败，请按 Ctrl+C 手动复制：",ids);}
+    }catch(e){console.error("[copyIds] fallback错误:",e);window.prompt("复制失败，请手动复制：",ids);}
+  }
+  if(navigator.clipboard){
+    navigator.clipboard.writeText(ids)
+      .then(()=>{console.log("[copyIds] clipboard API 成功");showCopyToast("已复制 "+n+" 个序号");})
+      .catch(err=>{console.warn("[copyIds] clipboard API 失败，使用 fallback:",err);execFallback();});
+  }else{execFallback();}
+}
+function getFiltered(){
+  const searchQ=(document.getElementById("imgSearch")||{value:""}).value.trim().toLowerCase();
+  let docs=allDocs;
+  if(activeFilter==="claimed")docs=docs.filter(d=>d.claimed_by&&d.status==="rejected");
+  else if(activeFilter==="rejected")docs=docs.filter(d=>d.status==="rejected"&&!d.claimed_by);
+  else if(activeFilter!=="all")docs=docs.filter(d=>d.status===activeFilter);
+  if(searchQ)docs=docs.filter(d=>(d.filename||"").toLowerCase().includes(searchQ));
+  return docs;
+}
+function renderGrid(){
+  buildClaimColorMap();
+  const filtered=getFiltered();grid.innerHTML="";emptyHint.style.display=filtered.length===0?"block":"none";
+  const p=allDocs.filter(d=>d.status==="pending").length,cl=allDocs.filter(d=>d.claimed_by&&d.status==="rejected").length,a=allDocs.filter(d=>d.status==="approved").length,r=allDocs.filter(d=>d.status==="rejected"&&!d.claimed_by).length;
+  statsBar.textContent="共 "+allDocs.length+" 张 | 待审 "+p+" | 认领 "+cl+" | 通过 "+a+" | 打回 "+r;
+  filtered.forEach(item=>{
+    const wrap=document.createElement("div");
+    wrap.className="card-wrap"+(selectModeOn?" select-mode":"")+(selectedIds.has(item.id)?" selected":"");
+    if(item.claimed_by){
+      const pin=document.createElement("div");pin.className="claim-pin";applyClaimPin(pin,item.claimed_by);wrap.appendChild(pin);
+    }
+    const sel=document.createElement("label");sel.className="card-sel";
+    const cb=document.createElement("input");cb.type="checkbox";cb.checked=selectedIds.has(item.id);
+    sel.appendChild(cb);wrap.appendChild(sel);
+    const card=document.createElement("div");card.className="card";
+    const ist=itemStatus(item);
+    card.innerHTML='<img src="'+imgThumb(item.url)+'" alt="" loading="lazy"/><div class="info"><span class="badge badge-'+ist+'">'+statusLabel(ist)+'</span><div class="filename">'+(item.filename||"图片")+'</div><div style="font-size:.72rem;color:#888;margin-top:2px">'+(item.replaced_by||item.uploader||"")+'</div>'+(item.status==="rejected"&&item.reject_reason?'<div class="reject-reason">'+item.reject_reason+'</div>':'')+'</div>';
+    wrap.appendChild(card);
+    cb.addEventListener("change",e=>{e.stopPropagation();if(cb.checked)selectedIds.add(item.id);else selectedIds.delete(item.id);wrap.classList.toggle("selected",cb.checked);updateBatchCount();});
+    cb.addEventListener("click",e=>e.stopPropagation());
+    card.addEventListener("click",()=>{if(selectModeOn){cb.checked=!cb.checked;cb.dispatchEvent(new Event("change"));return;}openModal(item,filtered);});
+    grid.appendChild(wrap);
+  });
+  if(currentView==="table")renderTable();
+}
+function setView(v){
+  currentView=v;
+  document.getElementById("grid").style.display=v==="grid"?"grid":"none";
+  document.getElementById("tableView").style.display=v==="table"?"block":"none";
+  document.getElementById("batchBar").style.display=v==="grid"?"":"none";
+  document.querySelectorAll(".view-btn").forEach(b=>b.classList.toggle("active",b.dataset.view===v));
+  if(v==="table")renderTable();else renderGrid();
+}
+function renderTable(){
+  const isEng=currentProjectName&&currentProjectName.includes("英语绘本");
+  const customTable=(currentProjectMeta&&currentProjectMeta.table&&currentProjectMeta.table.columns&&currentProjectMeta.table.rows)?currentProjectMeta.table:null;
+  const thead=document.querySelector("#statusTable thead tr");
+  const stColors={approved:{bg:"#d1e7dd",fg:"#0f5132"},rejected:{bg:"#f8d7da",fg:"#842029"},claimed:{bg:"#fff3e0",fg:"#e65100"},pending:{bg:"#fff3cd",fg:"#856404"},none:{bg:"#f0f2f5",fg:"#aaa"}};
+  const copyBtn="<button type=\"button\" data-action=\"copy-ids\" title=\"复制所有序号\" style=\"margin-left:6px;padding:2px 6px;border:1px solid #c8d3e8;background:#eaf2ff;color:#1a73e8;border-radius:4px;cursor:pointer;font-size:.7rem;vertical-align:middle;line-height:1.4\">📋 复制</button>";
+  if(customTable&&!isEng){
+    const rowsObj=customTable.rows;
+    const hasDetail=Object.values(rowsObj).some(r=>r.some(v=>(v||"").trim()));
+    thead.innerHTML="<th>文件名"+copyBtn+"</th>"+(hasDetail?"<th>详情</th>":"")+"<th>上传方</th><th>状态</th>";
+    const tbody=document.getElementById("statusTbody");tbody.innerHTML="";
+    const searchQ=(document.getElementById("imgSearch")||{value:""}).value.trim().toLowerCase();
+    const docMap={};
+    const norm=s=>(s||"").toLowerCase().replace(/[^a-z0-9]/g,"");
+    const normIdToId={},normKwToId={};
+    Object.keys(rowsObj).forEach(id=>{
+      const ni=norm(id);if(ni&&!normIdToId[ni])normIdToId[ni]=id;
+      const nk=norm(rowsObj[id][0]);if(nk&&!normKwToId[nk])normKwToId[nk]=id;
+    });
+    allDocs.forEach(d=>{
+      const fn=(d.filename||"").replace(/\.[^.]+$/,"").replace(/^.*[/\\]/,"");
+      let id=null;
+      if(rowsObj[fn])id=fn;
+      else if(normIdToId[norm(fn)])id=normIdToId[norm(fn)];
+      else{
+        const m=fn.match(/^(\d+)/);
+        if(m&&rowsObj[m[1]])id=m[1];
+        else{
+          const stripped=fn.replace(/^\d+/,"");
+          const kwNorm=norm(stripped.split(/[_\-\s]/)[0]);
+          if(normKwToId[kwNorm])id=normKwToId[kwNorm];
+        }
+      }
+      if(id){if(!docMap[id])docMap[id]=[];docMap[id].push(d);}
+    });
+    let shown=0;
+    Object.keys(rowsObj).sort().forEach(id=>{
+      const row=rowsObj[id];
+      const docs=docMap[id]||[];
+      const ist=docs.length===0?"none":docs.every(d=>itemStatus(d)==="approved")?"approved":docs.some(d=>itemStatus(d)==="rejected"&&!d.claimed_by)?"rejected":docs.some(d=>itemStatus(d)==="claimed")?"claimed":docs.some(d=>d.status==="pending")?"pending":"none";
+      if(activeFilter!=="all"&&activeFilter!==ist)return;
+      if(searchQ&&!id.toLowerCase().includes(searchQ)&&!row.some(v=>(v||"").toLowerCase().includes(searchQ)))return;
+      const c=stColors[ist]||stColors.none;
+      const stText=ist==="none"?"未上传":statusLabel(ist);
+      const uploader=docs.length?(docs[0].replaced_by||docs[0].uploader||""):"";
+      const detailStr=row.filter(v=>(v||"").toString().trim()).join(" ｜ ");
+      const detailCell=hasDetail?"<td style=\"font-size:.8rem;color:#555\">"+detailStr+"</td>":"";
+      const tr=document.createElement("tr");
+      tr.innerHTML="<td style=\"font-weight:600\">"+id+"</td>"+detailCell+"<td style=\"font-size:.75rem;color:#888\">"+uploader+"</td><td><span class=\"st-badge\" style=\"background:"+c.bg+";color:"+c.fg+"\">"+stText+"</span></td>";
+      if(docs.length){tr.style.cursor="pointer";tr.addEventListener("click",()=>openModal(docs[0],docs));}
+      tbody.appendChild(tr);shown++;
+    });
+    statsBar.textContent="共显示 "+shown+" 条";
+    return;
+  }
+  if(isEng){
+    thead.innerHTML="<th>文件名"+copyBtn+"</th><th>上传方</th><th>状态</th>";
+    const tbody=document.getElementById("statusTbody");tbody.innerHTML="";
+    const books={};
+    getFiltered().forEach(item=>{
+      const p=parseImgName(item.filename);
+      const book=p.book||"未知书名";
+      if(!books[book])books[book]=[];
+      books[book].push({item,scene:p.scene});
+    });
+    const sortedBooks=Object.keys(books).sort((a,b)=>a.localeCompare(b,"en"));
+    let shown=0;
+    sortedBooks.forEach(book=>{
+      const frames=books[book].sort((a,b)=>a.scene-b.scene);
+      const hdr=document.createElement("tr");hdr.className="book-header";
+      hdr.innerHTML='<td colspan="3">📖 '+book+' <span style="opacity:.65;font-weight:400;font-size:.8rem">('+frames.length+' 张)</span></td>';
+      tbody.appendChild(hdr);
+      frames.forEach(({item})=>{
+        const ist=itemStatus(item);const c=stColors[ist]||stColors.none;
+        const tr=document.createElement("tr");
+        tr.innerHTML='<td style="font-size:.78rem;color:#444;max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+(item.filename||"")+'">'+(item.filename||"")+'</td><td style="font-size:.75rem;color:#888">'+(item.replaced_by||item.uploader||"")+'</td><td><span class="st-badge" style="background:'+c.bg+';color:'+c.fg+'">'+statusLabel(ist)+'</span></td>';
+        tr.style.cursor="pointer";tr.addEventListener("click",()=>openModal(item,frames.map(f=>f.item)));
+        tbody.appendChild(tr);shown++;
+      });
+    });
+    statsBar.textContent="共显示 "+shown+" 张 / "+sortedBooks.length+" 本";
+  }else if(currentProjectName&&currentProjectName.includes("英语单词卡片")){
+    thead.innerHTML="<th>序号"+copyBtn+"</th><th>关键词</th><th>中文</th><th>12pt</th><th>18pt</th><th>25px</th><th>状态</th>";
+    const tbody=document.getElementById("statusTbody");tbody.innerHTML="";
+    const searchQ=(document.getElementById("imgSearch")||{value:""}).value.trim().toLowerCase();
+    const docMap={};
+    const kwToId={};
+    Object.keys(WORD_MAP).forEach(id=>{const k=(WORD_MAP[id].kw||"").toLowerCase();if(k&&!kwToId[k])kwToId[k]=id;});
+    allDocs.forEach(d=>{
+      const fn=(d.filename||"").replace(/\.[^.]+$/,"").replace(/^.*[/\\]/,"");
+      const m=fn.match(/^(\d{4})/);
+      let id=null;
+      if(m&&WORD_MAP[m[1]])id=m[1];
+      else{
+        const kw=fn.split(/[_\-\s]/)[0].toLowerCase();
+        if(kwToId[kw])id=kwToId[kw];
+      }
+      if(id){if(!docMap[id])docMap[id]=[];docMap[id].push(d);}
+    });
+    let shown=0;
+    Object.keys(WORD_MAP).sort().forEach(id=>{
+      const row=WORD_MAP[id];
+      const docs=docMap[id]||[];
+      const ist=docs.length===0?"none":docs.every(d=>itemStatus(d)==="approved")?"approved":docs.some(d=>itemStatus(d)==="rejected"&&!d.claimed_by)?"rejected":docs.some(d=>itemStatus(d)==="claimed")?"claimed":docs.some(d=>d.status==="pending")?"pending":"none";
+      if(activeFilter!=="all"&&activeFilter!==ist)return;
+      if(searchQ&&!id.includes(searchQ)&&!row.kw.toLowerCase().includes(searchQ)&&!row.zh.includes(searchQ))return;
+      const c=stColors[ist]||stColors.none;
+      const stText=ist==="none"?"未上传":statusLabel(ist);
+      const tr=document.createElement("tr");
+      tr.innerHTML="<td style=\"color:#888;font-size:.8rem\">"+id+"</td><td style=\"font-weight:700\">"+row.kw+"</td><td style=\"font-size:.78rem;color:#555\">"+row.zh+"</td><td style=\"text-align:center\">"+(row.i12?"✓":"")+"</td><td style=\"text-align:center\">"+(row.i18?"✓":"")+"</td><td style=\"text-align:center\">"+(row.i25?"✓":"")+"</td><td><span class=\"st-badge\" style=\"background:"+c.bg+";color:"+c.fg+"\">"+stText+"</span></td>";
+      if(docs.length){tr.style.cursor="pointer";tr.addEventListener("click",()=>openModal(docs[0],docs));}
+      tbody.appendChild(tr);shown++;
+    });
+    statsBar.textContent="共显示 "+shown+" 条";
+    return;
+  }else{
+    thead.innerHTML="<th>序号<button type=\"button\" data-action=\"copy-ids\" title=\"复制所有序号\" style=\"margin-left:6px;padding:2px 6px;border:1px solid #c8d3e8;background:#eaf2ff;color:#1a73e8;border-radius:4px;cursor:pointer;font-size:.7rem;vertical-align:middle;line-height:1.4\">📋 复制</button></th><th>关键词</th><th>造句</th><th>状态</th><th>上传人</th>";
+    const tbody=document.getElementById("statusTbody");tbody.innerHTML="";
+    const docMap={};
+    allDocs.forEach(d=>{const key=(d.filename||"").replace(/\.[^.]+$/,"").replace(/^.*[/\\]/,"");docMap[key]=d;});
+    const searchQ=(document.getElementById("imgSearch")||{value:""}).value.trim().toLowerCase();
+    let shown=0;
+    const sentenceSource=currentProjectMeta&&currentProjectMeta.table;
+    if(!sentenceSource){
+      thead.innerHTML='';
+      document.getElementById('statusTbody').innerHTML='<tr><td colspan="5" style="text-align:center;padding:30px;color:#888">尚未导入表格，请点击"导入表格"按钮上传数据。</td></tr>';
+      statsBar.textContent='';
+      return;
+    }
+    Object.keys(sentenceSource).sort().forEach(key=>{
+      const item=docMap[key];const row=sentenceSource[key];
+      const ist=item?itemStatus(item):"none";
+      if(activeFilter!=="all"&&activeFilter!==ist)return;
+      if(searchQ&&!key.includes(searchQ)&&!row.kw.includes(searchQ)&&!(item&&(item.filename||"").toLowerCase().includes(searchQ)))return;
+      const c=stColors[ist]||stColors.none;
+      const stText=ist==="none"?"未上传":statusLabel(ist);
+      const tr=document.createElement("tr");
+      tr.innerHTML='<td style="color:#888;font-size:.8rem">'+key+'</td><td style="font-weight:700">'+row.kw+'</td><td style="font-size:.78rem;color:#555;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="'+row.s+'">'+row.s+'</td><td><span class="st-badge" style="background:'+c.bg+';color:'+c.fg+'">'+stText+'</span></td><td style="font-size:.75rem;color:#888">'+(item?(item.replaced_by||item.uploader||""):"")+'</td>';
+      if(item){tr.style.cursor="pointer";tr.addEventListener("click",()=>openModal(item,allDocs));}
+      tbody.appendChild(tr);shown++;
+    });
+    statsBar.textContent="共显示 "+shown+" 条";
+  }
+}
+document.addEventListener("click",function(e){
+  const t=e.target.closest('[data-action="copy-ids"]');
+  if(t){e.preventDefault();e.stopPropagation();console.log("[copy-ids] 点击事件触发");copyIds();}
+});
+document.querySelectorAll(".view-btn").forEach(btn=>btn.addEventListener("click",()=>setView(btn.dataset.view)));
+document.querySelectorAll(".filter-bar button[data-filter]").forEach(btn=>{btn.addEventListener("click",()=>{document.querySelectorAll(".filter-bar button[data-filter]").forEach(b=>b.classList.remove("active"));btn.classList.add("active");activeFilter=btn.dataset.filter;if(currentView==="table")renderTable();else renderGrid();});});
+document.getElementById("chkSelectMode").addEventListener("change",e=>{selectModeOn=e.target.checked;if(!selectModeOn){selectedIds.clear();document.getElementById("chkSelectAll").checked=!1;}renderGrid();updateBatchCount();});
+document.getElementById("chkSelectAll").addEventListener("change",e=>{if(e.target.checked)getFiltered().forEach(i=>selectedIds.add(i.id));else selectedIds.clear();renderGrid();updateBatchCount();});
+document.getElementById("btnBatchDownload").addEventListener("click",async()=>{
+  if(!selectedIds.size){alert("请先勾选图片");return;}
+  const ids=[...selectedIds];
+  const btn=document.getElementById("btnBatchDownload");
+  const origText=btn.textContent;
+  try{
+    const JSZip=(await import("https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm")).default;
+    const zip=new JSZip();
+    const CONCURRENCY=3;
+    let done=0;
+    btn.disabled=true;
+    const update=()=>{btn.textContent=`打包中 ${done}/${ids.length}…`;};
+    update();
+    // 分批并发
+    for(let i=0;i<ids.length;i+=CONCURRENCY){
+      const batch=ids.slice(i,i+CONCURRENCY);
+      await Promise.all(batch.map(async id=>{
+        const item=allDocs.find(d=>d.id===id);if(!item)return;
+        try{
+          const r=await fetch(item.url);
+          const b=await r.blob();
+          zip.file(item.filename||id+".png",b);
+        }catch(e){console.warn("跳过",item.filename,e);}
+        done++;update();
+      }));
+    }
+    btn.textContent="生成 ZIP…";
+    const blob=await zip.generateAsync({type:"blob",compression:"DEFLATE",compressionOptions:{level:1}});
+    const a=document.createElement("a");const u=URL.createObjectURL(blob);a.href=u;a.download="picreview_"+Date.now()+".zip";a.click();URL.revokeObjectURL(u);
+  }catch(err){alert("打包失败："+err.message);}
+  finally{btn.disabled=false;btn.textContent=origText;}
+});
+document.getElementById("btnBatchDelete").addEventListener("click",async()=>{
+  if(currentRole!=="uploader")return;
+  if(!selectedIds.size){alert("请先勾选图片");return;}
+  if(!confirm("确定删除选中的 "+selectedIds.size+" 张？"))return;
+  for(const id of[...selectedIds])await sb.from("images").delete().eq("id",id);
+  selectedIds.clear();renderGrid();updateBatchCount();
+});
+
+// 弹窗
+const modal=document.getElementById("modal"),modalImg=document.getElementById("modalImg"),modalFilename=document.getElementById("modalFilename"),modalUploader=document.getElementById("modalUploader"),commentInput=document.getElementById("commentInput"),commentsList=document.getElementById("commentsList"),btnApprove=document.getElementById("btnApprove"),btnReject=document.getElementById("btnReject"),btnDelete=document.getElementById("btnDelete"),modalClose=document.getElementById("modalClose"),replaceSection=document.getElementById("replaceSection"),replaceInput=document.getElementById("replaceInput"),replaceBtn=document.getElementById("replaceBtn"),replaceStatus=document.getElementById("replaceStatus"),btnPrev=document.getElementById("btnPrev"),btnNext=document.getElementById("btnNext"),navCounter=document.getElementById("navCounter"),modalClaimPin=document.getElementById("modalClaimPin"),btnClaim=document.getElementById("btnClaim"),btnUnclaim=document.getElementById("btnUnclaim"),btnRename=document.getElementById("btnRename");
+let selectedTags=[],currentDocId=null,currentList=[],currentIndex=-1;
+function openModal(item,list){currentList=list||getFiltered();currentIndex=currentList.findIndex(d=>d.id===item.id);loadItem(item);modal.classList.add("open");}
+function loadItem(item){
+  buildClaimColorMap();
+  currentDocId=item.id;selectedTags=[];modalImg.src=imgMid(item.url);modalFilename.textContent=item.filename||"图片";
+  btnRename.style.display=currentRole==="uploader"?"inline":"none";
+  const modalSentence=document.getElementById("modalSentence");
+  const fnKey=(item.filename||"").replace(/\.[^.]+$/,"").replace(/^.*[/\\]/,"");
+  const isWordCard=currentProjectName&&currentProjectName.includes("英语单词卡片");
+  if(isWordCard){
+    let kw="",zh="";
+    const rows=currentProjectMeta?.table?.rows;
+    if(rows){
+      const norm=s=>(s||"").toLowerCase().replace(/[^a-z0-9]/g,"");
+      let row=rows[fnKey];
+      if(!row)row=Object.entries(rows).find(([id])=>norm(id)===norm(fnKey))?.[1];
+      if(!row){const m=fnKey.match(/^(\d+)/);if(m){row=rows[m[1]]||Object.entries(rows).find(([id])=>id.startsWith(m[1]))?.[1];}}
+      if(row)kw=row[0]||"";
+    }
+    const id4=(fnKey.match(/^(\d{4})/)||[])[1];
+    if(id4&&WORD_MAP[id4]){if(!kw)kw=WORD_MAP[id4].kw;zh=WORD_MAP[id4].zh||"";}
+    if(kw||zh){
+      modalSentence.textContent=(kw?"关键词："+kw:"")+(kw&&zh?"　｜　":"")+(zh?"中文："+zh:"");
+      modalSentence.style.display="block";
+    }else{modalSentence.style.display="none";}
+  }else{
+    const csvRow=(currentProjectMeta&&currentProjectMeta.table&&currentProjectMeta.table.rows&&currentProjectMeta.table.rows[fnKey])||null;
+    if(csvRow){
+      const kw2=csvRow[0]||'';const s2=csvRow[1]||'';
+      modalSentence.textContent=(kw2?'关键词：'+kw2:'')+(kw2&&s2?'　｜　':'')+(s2?'造句：'+s2:'');
+      modalSentence.style.display='block';
+    }else{modalSentence.style.display='none';}
+  }
+  modalUploader.textContent="上传人："+(item.replaced_by||item.uploader||"—")+"  |  状态："+statusLabel(itemStatus(item))+(item.claimed_by?"  |  认领："+item.claimed_by:"");
+  commentInput.value="";replaceStatus.textContent="";commentInput.style.border="";
+  document.querySelectorAll(".tag").forEach(t=>t.classList.remove("selected"));
+  if(item.claimed_by){applyClaimPin(modalClaimPin,item.claimed_by);modalClaimPin.classList.add("show");}
+  else{modalClaimPin.innerHTML="";modalClaimPin.style.background="";modalClaimPin.style.color="";modalClaimPin.classList.remove("show");}
+  if(currentRole==="reviewer"&&item.status==="rejected"){
+    btnClaim.textContent=item.claimed_by?"抢夺认领":"我来改！";
+    btnClaim.style.display="inline-block";
+    btnUnclaim.style.display=item.claimed_by?"inline-block":"none";
+  }else{btnClaim.style.display="none";btnUnclaim.style.display="none";}
+  commentsList.innerHTML="";
+  (item.comments||[]).slice().reverse().forEach(c=>{const div=document.createElement("div");div.className="comment-item";const claimMark=c.type==="claim"?' <span style="color:#e65100;font-weight:700">[认领]</span>':"";div.innerHTML='<div class="meta">'+c.user+" · "+fmt(c.time)+claimMark+(c.action==="approved"?" ✅":"")+(c.action==="rejected"?" ❌":"")+'</div>'+(c.text||"")+(c.tags&&c.tags.length?'<div style="margin-top:3px">'+c.tags.map(t=>'<span class="badge badge-pending">'+t+'</span>').join(" ")+'</div>':"");commentsList.appendChild(div);});
+  replaceSection.style.display=(currentRole==="uploader"&&item.status==="rejected")?"block":"none";
+  btnPrev.disabled=currentIndex<=0;btnNext.disabled=currentIndex>=currentList.length-1;
+  navCounter.textContent=(currentIndex+1)+" / "+currentList.length;
+}
+function navigate(dir){const ni=currentIndex+dir;if(ni<0||ni>=currentList.length)return;currentIndex=ni;loadItem(currentList[ni]);}
+btnPrev.addEventListener("click",()=>navigate(-1));
+btnNext.addEventListener("click",()=>navigate(1));
+document.addEventListener("keydown",e=>{if(!modal.classList.contains("open"))return;if(e.key==="ArrowLeft")navigate(-1);if(e.key==="ArrowRight")navigate(1);if(e.key==="Escape")closeModal();});
+modalClose.addEventListener("click",closeModal);
+modal.addEventListener("click",e=>{if(e.target===modal)closeModal();});
+function closeModal(){modal.classList.remove("open");currentDocId=null;document.getElementById("reviewToast").classList.remove("show");}
+function showReviewToast(status){
+  const t=document.getElementById("reviewToast");
+  t.textContent=status==="approved"?"已通过":"已打回";
+  t.className=status;
+  requestAnimationFrame(()=>t.classList.add("show"));
+  clearTimeout(t._timer);
+  t._timer=setTimeout(()=>t.classList.remove("show"),2500);
+}
+document.querySelectorAll(".tag").forEach(t=>{t.addEventListener("click",()=>{t.classList.toggle("selected");const tag=t.dataset.tag;if(selectedTags.includes(tag))selectedTags=selectedTags.filter(x=>x!==tag);else selectedTags.push(tag);});});
+btnClaim.addEventListener("click",async()=>{
+  if(!currentDocId||currentRole!=="reviewer")return;
+  const item=allDocs.find(d=>d.id===currentDocId);if(!item)return;
+  if(item.claimed_by&&item.claimed_by!==currentUser){if(!confirm("已由「"+item.claimed_by+"」认领，确定抢夺？"))return;}
+  const nc=[...(item.comments||[])];nc.push({user:currentUser,text:"我来改！",type:"claim",time:new Date().toISOString()});
+  const now=new Date().toISOString();
+  await sb.from("images").update({claimed_by:currentUser,claimed_at:now,comments:nc,updated_at:now}).eq("id",currentDocId);
+  loadItem({...item,claimed_by:currentUser,claimed_at:now,comments:nc});
+});
+btnUnclaim.addEventListener("click",async()=>{
+  if(!currentDocId||currentRole!=="reviewer")return;
+  const item=allDocs.find(d=>d.id===currentDocId);if(!item||!item.claimed_by)return;
+  const now=new Date().toISOString();
+  await sb.from("images").update({claimed_by:null,claimed_at:null,updated_at:now}).eq("id",currentDocId);
+  loadItem({...item,claimed_by:null,claimed_at:null});
+});
+btnApprove.addEventListener("click",async()=>{if(currentDocId)await submitReview("approved","");});
+btnReject.addEventListener("click",async()=>{if(!currentDocId)return;const reason=commentInput.value.trim();if(!reason&&!selectedTags.length){commentInput.style.border="2px solid red";commentInput.placeholder="打回时请填写原因或选择标签";return;}commentInput.style.border="";await submitReview("rejected",reason||selectedTags.join("、"));});
+async function submitReview(status,rejectReason){
+  const comment=commentInput.value.trim();const item=allDocs.find(d=>d.id===currentDocId);if(!item)return;
+  const nc=[...(item.comments||[])];
+  if(comment||selectedTags.length)nc.push({user:currentUser,text:comment,tags:[...selectedTags],time:new Date().toISOString(),action:status});
+  const now=new Date().toISOString();
+  const updated={...item,status,reject_reason:status==="rejected"?rejectReason:"",tags:[...selectedTags],comments:nc,reviewed_by:currentUser,updated_at:now};
+  await sb.from("images").update({status,reject_reason:updated.reject_reason,tags:updated.tags,comments:nc,reviewed_by:currentUser,updated_at:now}).eq("id",currentDocId);
+  const ai=allDocs.findIndex(d=>d.id===currentDocId);
+  if(ai>=0)allDocs[ai]=updated;
+  if(currentList[currentIndex]?.id===currentDocId)currentList[currentIndex]=updated;
+  loadItem(updated);
+  renderGrid();
+  showReviewToast(status);
+}
+btnDelete.addEventListener("click",async()=>{if(!currentDocId)return;if(!confirm("确定删除？"))return;await sb.from("images").delete().eq("id",currentDocId);closeModal();});
+replaceBtn.addEventListener("click",async()=>{
+  const f=replaceInput.files[0];if(!f){replaceStatus.textContent="请先选择文件";return;}
+  replaceStatus.textContent="正在上传...";
+  const hash=await hashFile(f);
+  let j;try{j=await cldUpload(f);}catch(err){replaceStatus.textContent="失败："+err.message;return;}
+  await sb.from("images").update({url:j.secure_url,storage_path:j.public_id,file_hash:hash,status:"pending",tags:[],updated_at:new Date().toISOString(),uploader:currentUser,replaced_by:currentUser,claimed_by:null,claimed_at:null}).eq("id",currentDocId);
+  replaceStatus.textContent="替换成功！";replaceInput.value="";setTimeout(closeModal,1200);
+});
+btnRename.addEventListener("click",async()=>{
+  if(!currentDocId||currentRole!=="uploader")return;
+  const item=allDocs.find(d=>d.id===currentDocId);if(!item)return;
+  const oldName=item.filename||"";
+  const newName=(prompt("修改文件名：",oldName)||"").trim();
+  if(!newName||newName===oldName)return;
+  await sb.from("images").update({filename:newName,updated_at:new Date().toISOString()}).eq("id",currentDocId);
+  item.filename=newName;
+  loadItem(item);
+});
+function fmt(iso){if(!iso)return"";const d=new Date(iso);return(d.getMonth()+1)+"/"+d.getDate()+" "+String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");}
+</script>
+<div id="copyToast"></div>
+<div id="reviewToast"></div>
+<div id="importModal">
+  <div class="import-box">
+    <h2>📥 导入表格配置</h2>
+    <div class="import-section" id="impSheetSection">
+      <label>选择 Sheet</label>
+      <select id="impSheetSelect"></select>
+    </div>
+    <div class="import-section">
+      <label>ID 列（用于匹配图片文件名）</label>
+      <select id="impKeySelect"></select>
+    </div>
+    <div class="import-section">
+      <label>显示列（可多选，空列已自动隐藏）</label>
+      <div class="import-col-list" id="impColList"></div>
+    </div>
+    <div class="import-section" style="border-top:1px dashed #c8d3e8;padding-top:10px;margin-top:4px">
+      <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="checkbox" id="impExtraEnabled" style="width:14px;height:14px" />
+        从其他 Sheet 补充一列（适用于跨 Sheet 引用的列）
+      </label>
+      <div id="impExtraOptions" style="display:none;margin-top:8px">
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+          <select id="impExtraSheet" style="flex:1;min-width:120px"></select>
+          <select id="impExtraCol" style="flex:1;min-width:120px"></select>
+          <input id="impExtraLabel" placeholder="列名（如：造句）" style="flex:1;min-width:100px;padding:4px 8px;border:1px solid #c8d3e8;border-radius:4px" />
+        </div>
+      </div>
+    </div>
+    <div id="impPreview" class="import-preview"></div>
+    <div class="import-actions">
+      <button class="btn-import-cancel" id="btnImportCancel">取消</button>
+      <button class="btn-import-confirm" id="btnImportConfirm">导入</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>
