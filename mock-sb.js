@@ -14,7 +14,7 @@ const PROJ_ID = "demo-proj-1";
 const seedProjects = [
   {
     id: PROJ_ID,
-    name: "英语绘本 L3 · 演示项目",
+    name: "演示项目",
     created_by: "PM·小 C",
     created_at: ago(7 * 24 * 3600 * 1000),
     metadata: {},
@@ -23,36 +23,36 @@ const seedProjects = [
 
 const seedImages = [
   // 3 pending
-  { f: "1.jpg", filename: "L3_demo_01_封面.jpg", uploader: "设计·小 A", status: "pending", h: 2.0 },
-  { f: "2.jpg", filename: "L3_demo_02.jpg",     uploader: "设计·小 A", status: "pending", h: 2.0 },
-  { f: "3.jpg", filename: "L3_demo_03.jpg",     uploader: "设计·小 B", status: "pending", h: 1.5 },
+  { f: "1.jpg", filename: "01_封面.jpg", uploader: "设计·小 A", status: "pending", h: 2.0 },
+  { f: "2.jpg", filename: "02.jpg",     uploader: "设计·小 A", status: "pending", h: 2.0 },
+  { f: "3.jpg", filename: "03.jpg",     uploader: "设计·小 B", status: "pending", h: 1.5 },
   // 2 approved
   {
-    f: "4.jpg", filename: "L3_demo_04.jpg", uploader: "设计·小 A", status: "approved",
+    f: "4.jpg", filename: "04.jpg", uploader: "设计·小 A", status: "approved",
     reviewed_by: "PM·小 C", h: 5,
     comments: [{ user: "PM·小 C", text: "构图、色彩 OK，通过。", tags: [], time: ago(60 * 60 * 1000), action: "approved" }],
   },
   {
-    f: "5.jpg", filename: "L3_demo_05.jpg", uploader: "设计·小 B", status: "approved",
+    f: "5.jpg", filename: "05.jpg", uploader: "设计·小 B", status: "approved",
     reviewed_by: "PM·小 C", h: 4,
     comments: [{ user: "PM·小 C", text: "通过", tags: [], time: ago(45 * 60 * 1000), action: "approved" }],
   },
   // 2 rejected
   {
-    f: "6.jpg", filename: "L3_demo_06.jpg", uploader: "设计·小 A", status: "rejected",
+    f: "6.jpg", filename: "06.jpg", uploader: "设计·小 A", status: "rejected",
     reviewed_by: "PM·小 C", reject_reason: "主角描边过粗，整体偏离系列风格",
     tags: ["有描边", "风格问题"], h: 6,
     comments: [{ user: "PM·小 C", text: "主角描边过粗，整体偏离系列风格", tags: ["有描边", "风格问题"], time: ago(30 * 60 * 1000), action: "rejected" }],
   },
   {
-    f: "7.jpg", filename: "L3_demo_07.jpg", uploader: "设计·小 B", status: "rejected",
+    f: "7.jpg", filename: "07.jpg", uploader: "设计·小 B", status: "rejected",
     reviewed_by: "PM·小 C", reject_reason: "动作与剧情不符，第二格人物应在跑而不是站立",
     tags: ["剧情问题"], h: 6,
     comments: [{ user: "PM·小 C", text: "动作与剧情不符，第二格人物应在跑而不是站立", tags: ["剧情问题"], time: ago(20 * 60 * 1000), action: "rejected" }],
   },
   // 2 claimed (rejected + 被认领准备重做)
   {
-    f: "8.jpg", filename: "L3_demo_08.jpg", uploader: "设计·小 A", status: "rejected",
+    f: "8.jpg", filename: "08.jpg", uploader: "设计·小 A", status: "rejected",
     reviewed_by: "PM·小 C", reject_reason: "色彩对比度不够，主体不突出",
     tags: ["色彩/文字问题"], claimed_by: "设计·小 A", claimed_at: ago(10 * 60 * 1000), h: 7,
     comments: [
@@ -61,7 +61,7 @@ const seedImages = [
     ],
   },
   {
-    f: "9.jpg", filename: "L3_demo_09_封底.jpg", uploader: "设计·小 B", status: "rejected",
+    f: "9.jpg", filename: "09_封底.jpg", uploader: "设计·小 B", status: "rejected",
     reviewed_by: "PM·小 C", reject_reason: "封底缺少品牌 logo",
     tags: ["形象/场景问题"], claimed_by: "设计·小 B", claimed_at: ago(5 * 60 * 1000), h: 8,
     comments: [
