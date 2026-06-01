@@ -10,14 +10,36 @@ const NOW = Date.now();
 const ago = (ms) => new Date(NOW - ms).toISOString();
 const PROJ_ID = "demo-proj-1";
 
-// ---- 种子数据：1 个项目 + 9 张图（3 待审 / 2 已通过 / 2 已打回 / 2 已认领）----
+// ---- 预置导入表格：序号 01~10 / 关键词 One~Ten ----
+// 前 9 行可匹配到已上传的示例图，第 10 行（10 / Ten）无图 → 表格显示「未上传」
+const DEMO_TABLE = {
+  columns: ["关键词"],
+  rows: {
+    "01": ["One"],
+    "02": ["Two"],
+    "03": ["Three"],
+    "04": ["Four"],
+    "05": ["Five"],
+    "06": ["Six"],
+    "07": ["Seven"],
+    "08": ["Eight"],
+    "09": ["Nine"],
+    "10": ["Ten"],
+  },
+};
+
+// ---- 种子数据：1 个项目 + 9 张图（3 待审 / 2 已通过 / 2 已打回 / 2 已认领）+ 一张 10 行表格 ----
 const seedProjects = [
   {
     id: PROJ_ID,
     name: "演示项目",
     created_by: "PM·小 C",
     created_at: ago(7 * 24 * 3600 * 1000),
-    metadata: {},
+    metadata: {
+      table: DEMO_TABLE,
+      table_uploaded_by: "PM·小 C",
+      table_uploaded_at: ago(7 * 24 * 3600 * 1000),
+    },
   },
 ];
 
