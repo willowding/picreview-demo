@@ -5,7 +5,7 @@ tool for small teams, designed and built solo during my product internship.
 
 🔗 **Live demo:** https://willowding.github.io/picreview-demo/
 
-> 中文：PicReview 是我在产品实习期间独立设计并开发的轻量团队审图工具。
+> PicReview 是我在实习期间独立设计并开发的轻量团队审图工具。
 > 本仓库是一个**无需后端、打开即玩**的演示版，数据均为示例，刷新后重置。
 
 ---
@@ -16,8 +16,8 @@ Small content teams often review images by pinging files back and forth in chat:
 no shared status, rejected versions get lost, and no one can tell what still
 needs work. PicReview turns that mess into one shared, stateful board.
 
-> 中文：小团队审图常靠在聊天里来回甩图——状态不同步、打回的版本丢失、
-> 没人说得清还有哪些待处理。PicReview 把这套混乱收敛成一块共享、带状态的看板。
+> 小团队审图常靠在聊天里来回甩图——状态不同步、打回的版本丢失、
+> 没人说得清还有哪些待处理，PicReview 把这套混乱收敛成一块共享、带状态的看板。
 
 ---
 
@@ -34,7 +34,7 @@ needs work. PicReview turns that mess into one shared, stateful board.
 - **Card view & table view**, the tag library, comment threads,
   multi-select bulk actions, and uploading your own images.
 
-> 中文：一键登录切换「上传 / 审核」角色；演示项目预置 9 张示例图，覆盖
+> 一键登录切换「上传 / 审核」角色；演示项目预置 9 张示例图，覆盖
 > 待审核 / 已通过 / 已打回（含理由与标签）/ 已认领 全部状态；并预置了一张 10 行的
 > 导入表格——前 9 行已匹配到图片，第 10 行尚无图片、显示「未上传」，直观演示
 > 「用表格盘点还差哪些图」的用法；可体验卡片视图、表格视图、标签库、评论、
@@ -54,7 +54,7 @@ transitions and validation as the real app, just with the backend swapped out.
 | Multi-user realtime sync | — (single browser) | Yes |
 | Data persistence | Resets on refresh | Persistent |
 
-> 中文：演示版**完全跑在浏览器里**，UI、交互、状态流转和校验逻辑与真实版一致，
+> 演示版**完全跑在浏览器里**，UI、交互、状态流转和校验逻辑与真实版一致，
 > 只是把后端换成了内存模拟。真实版接入了托管数据库、实时同步与云端图床。
 
 ---
@@ -66,7 +66,7 @@ transitions and validation as the real app, just with the backend swapped out.
   database client's API surface in memory, plus upload interception
 - **Hosting:** GitHub Pages
 
-> 中文：前端为单文件 `index.html`（原生 HTML/CSS/JS，无构建步骤）；
+> 前端为单文件 `index.html`（原生 HTML/CSS/JS，无构建步骤）；
 > `mock-sb.js` 在浏览器内模拟数据库客户端 API 与上传逻辑；部署在 GitHub Pages。
 
 ---
@@ -90,5 +90,5 @@ Sample illustrations are by **鸟鸟一** (Niaoniaoyi), created for the album
 This was my first project taken solo from idea to deployment, built with Claude
 as a patient co-pilot. 💙
 
-> 中文：示例插图由**鸟鸟一**老师为专辑**《FOCUS》**创作，此处仅用于演示展示，
+> 示例插图由**鸟鸟一**老师为专辑**《FOCUS》**创作，此处仅用于演示展示，
 > 特此致谢。这也是我第一个从想法到上线全程独立完成的项目，感谢 Claude 一路陪跑。
