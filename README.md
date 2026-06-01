@@ -90,5 +90,5 @@ Sample illustrations are by **鸟鸟一** (Niaoniaoyi), created for the album
 This was my first project taken solo from idea to deployment, built with Claude
 as a patient co-pilot. 💙
 
-> 示例插图由**鸟鸟一**老师为专辑**《FOCUS》**创作，此处仅用于演示展示，
+> 示例插图由**鸟鸟一**老师为专辑《FOCUS》创作，此处仅用于演示展示，
 > 特此致谢。这也是我第一个从想法到上线全程独立完成的项目，感谢 Claude 一路陪跑。
