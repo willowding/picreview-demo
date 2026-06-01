@@ -246,7 +246,7 @@ body{padding-top:40px}
     <div class="back-bar">
       <button class="btn-back" id="btnBack">← 返回</button>
       <span class="project-title" id="projectTitle"></span>
-      <button class="btn-import-table" id="btnImportTable" style="margin-left:auto" title="上传 CSV 表格，前三列依次为序号、关键词、造句">📥 导入表格</button>
+      <button class="btn-import-table" id="btnImportTable" style="margin-left:auto" title="支持 .xlsx / .xls / .csv 文件，导入时可选择 Sheet、ID 列和显示列">📥 导入表格 (.xlsx/.xls/.csv)</button>
       <button class="btn-import-table secondary" id="btnClearTable" style="display:none" title="清空当前项目的表格">清空</button>
       <button class="btn-complete" id="btnComplete" style="display:none">✓ 标记完结</button>
       <input type="file" id="tableFileInput" accept=".csv,.txt,.xlsx,.xls" style="display:none"/>
@@ -1432,16 +1432,21 @@ function _impBuildUI(){
   extraSheet.onchange=_impUpdateExtraCols;
   _impUpdateExtraCols();
   const chk=document.getElementById("impExtraEnabled");
+  chk.checked=false;
+  document.getElementById("impExtraOptions").style.display="none";
   chk.onchange=()=>{document.getElementById("impExtraOptions").style.display=chk.checked?"block":"none";};
 }
 
 function _impUpdateExtraCols(){
   const sn=document.getElementById("impExtraSheet").value;
   const rows=_impSheetRows(sn);
-  if(!rows.length)return;
+  const list=document.getElementById("impExtraColList");
+  if(!rows.length){list.innerHTML="<div style='color:#999;font-size:.8rem'>该 Sheet 无数据</div>";return;}
   const header=rows[0].map((c,i)=>(c||"").trim()||(i===0?"(第1列)":"列"+(i+1)));
-  const sel=document.getElementById("impExtraCol");
-  sel.innerHTML=header.map((h,i)=>`<option value="${i}">${h}</option>`).join("");
+  list.innerHTML=header.map((h,i)=>`
+    <label class="import-col-item">
+      <input type="checkbox" data-col="${i}" /> ${h}
+    </label>`).join("");
 }
 
 function _impUpdateCols(){
@@ -1500,19 +1505,18 @@ function _impRefreshPreview(){
 
 async function openImportModal(file){
   if(!currentProjectId||currentProjectId==="__uncat__"){showCopyToast("未分类项目不支持导入表格");return;}
+  if(typeof XLSX==="undefined"){showCopyToast("xlsx 解析库未加载，请检查网络");return;}
   const name=(file.name||"").toLowerCase();
-  if(name.endsWith(".xlsx")||name.endsWith(".xls")){
-    if(typeof XLSX==="undefined"){showCopyToast("xlsx 解析库未加载，请检查网络");return;}
+  if(name.endsWith(".csv")||name.endsWith(".txt")){
+    // CSV/TXT 也走同一个弹窗：用 XLSX 解析为单 Sheet 工作簿
+    const text=await file.text();
+    _impWb=XLSX.read(text,{type:"string",raw:true});
+  }else{
     const buf=await file.arrayBuffer();
     _impWb=XLSX.read(buf,{type:"array",cellFormula:true,cellNF:false,cellDates:true});
-    _impBuildUI();
-    document.getElementById("importModal").classList.add("open");
-  }else{
-    // CSV 直接用旧逻辑
-    const text=await file.text();
-    const rawRows=parseCsv(text);
-    _doImport(rawRows,0,[...Array(Math.max(...rawRows.map(r=>r.length))-1).keys()].map(i=>i+1));
   }
+  _impBuildUI();
+  document.getElementById("importModal").classList.add("open");
 }
 
 async function _doImportFromModal(){
@@ -1524,27 +1528,27 @@ async function _doImportFromModal(){
   const hasHeader=header.some(h=>/序号|关键词|造句|中文|输出文件名|单词|key|sentence|id|word|名|号/i.test(h));
   const start=hasHeader?1:0;
   const columns=selCols.map(i=>(header[i]||"列"+(i+1)));
-  // 检查是否启用「补充列」
+  // 检查是否启用「补充列」（可多列）
   const extraEnabled=document.getElementById("impExtraEnabled").checked;
-  let extraRows=null,extraColIdx=0,extraLabel="";
+  let extraRows=null,extraCols=[];
   if(extraEnabled){
-    const extraSn=document.getElementById("impExtraSheet").value;
-    extraColIdx=+document.getElementById("impExtraCol").value;
-    extraLabel=document.getElementById("impExtraLabel").value.trim()||("补充列");
-    const rawExtra=_impSheetRows(extraSn).filter(r=>r.some(c=>(c||"").trim()));
-    // 对齐：从 start 行开始，按行号对应主 sheet
-    extraRows=rawExtra;
-    columns.push(extraLabel);
+    extraCols=[...document.querySelectorAll("#impExtraColList input:checked")].map(cb=>+cb.dataset.col);
+    if(extraCols.length){
+      const extraSn=document.getElementById("impExtraSheet").value;
+      extraRows=_impSheetRows(extraSn);
+      const extraHeader=extraRows[0]||[];
+      extraCols.forEach(ci=>columns.push((extraHeader[ci]||"").trim()||"补充列"+(ci+1)));
+    }
   }
   const data={};
   for(let i=start;i<rows.length;i++){
     const r=rows[i].map(c=>(c||"").trim());
     const k=r[keyCol];if(!k)continue;
     const vals=selCols.map(ci=>r[ci]||"");
-    if(extraRows){
-      // 行号对齐：主 sheet 第 i 行对应 extra 第 i 行（含 header 偏移）
+    if(extraRows&&extraCols.length){
+      // 行号对齐：主 sheet 第 i 行对应补充 sheet 第 i 行
       const eRow=extraRows[i]||[];
-      vals.push((eRow[extraColIdx]||"").trim());
+      extraCols.forEach(ci=>vals.push((eRow[ci]||"").trim()));
     }
     data[k]=vals;
   }
@@ -2168,14 +2172,13 @@ function fmt(iso){if(!iso)return"";const d=new Date(iso);return(d.getMonth()+1)+
     <div class="import-section" style="border-top:1px dashed #c8d3e8;padding-top:10px;margin-top:4px">
       <label style="display:flex;align-items:center;gap:6px;cursor:pointer">
         <input type="checkbox" id="impExtraEnabled" style="width:14px;height:14px" />
-        从其他 Sheet 补充一列（适用于跨 Sheet 引用的列）
+        从其他 Sheet 补充列（适用于跨 Sheet 引用的列，可多选）
       </label>
       <div id="impExtraOptions" style="display:none;margin-top:8px">
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
-          <select id="impExtraSheet" style="flex:1;min-width:120px"></select>
-          <select id="impExtraCol" style="flex:1;min-width:120px"></select>
-          <input id="impExtraLabel" placeholder="列名（如：造句）" style="flex:1;min-width:100px;padding:4px 8px;border:1px solid #c8d3e8;border-radius:4px" />
-        </div>
+        <label style="font-size:.78rem;color:#666">来源 Sheet</label>
+        <select id="impExtraSheet" style="width:100%;margin:4px 0 8px"></select>
+        <label style="font-size:.78rem;color:#666">补充列（可多选）</label>
+        <div class="import-col-list" id="impExtraColList"></div>
       </div>
     </div>
     <div id="impPreview" class="import-preview"></div>
