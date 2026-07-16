@@ -202,19 +202,13 @@ main{padding:24px}
 #demoBanner .dot{width:6px;height:6px;border-radius:50%;background:#222;display:inline-block;margin:0 4px;opacity:.4}
 #demoBanner a{color:#1a3a8a;text-decoration:underline;font-weight:700}
 #demoBanner a:hover{color:#0d47a1}
-body{padding-top:40px}
-@media(max-width:640px){#demoBanner{font-size:.75rem;padding:7px 10px}body{padding-top:58px}}
+body{
 </style>
-<div id="demoBanner">
-  <span>🧪 这是 <strong>PicReview 演示版本</strong>，所有操作仅保存在你当前的浏览器会话中，刷新即恢复初始数据。</span>
-  <span class="dot"></span>
-  <span>生产版本（含多人实时同步）部署在团队内部。</span>
-</div>
 <div id="loginMask">
   <div class="login-box">
     <h2>PicReview · Demo</h2>
     <p class="sub">随便输个名字、选个角色就能进。建议选「审核」体验通过 / 打回 / 评论；选「上传」体验上传 / 替换 / 删除。</p>
-    <input id="nameInput" type="text" placeholder="你的名字（随便填，例如：访客）" maxlength="20"/>
+    <input id="nameInput" type="text" placeholder="例：访客" maxlength="20"/>
     <div class="role-pick">
       <div class="role-card" id="cardUploader" data-role="uploader"><div class="role-check">✓</div><div class="role-icon-wrap">📤</div><div class="name">上传</div><div class="desc">上传 / 删除 / 替换</div></div>
       <div class="role-card" id="cardReviewer" data-role="reviewer"><div class="role-check">✓</div><div class="role-icon-wrap">🔍</div><div class="name">审核</div><div class="desc">通过 / 打回 / 评论</div></div>
@@ -223,7 +217,7 @@ body{padding-top:40px}
   </div>
 </div>
 <header>
-  <h1 id="headerTitle" title="返回项目列表">PicReview</h1>
+  <h1 id="headerTitle" title="返回项目列表">PicReview Demo</h1>
   <span id="roleLabel"></span>
   <button id="logoutBtn">切换</button>
 </header>
